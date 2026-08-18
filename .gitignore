@@ -1,0 +1,22 @@
+# Data & heavy artifacts (delivered via Kaggle Dataset, never via GitHub)
+Data/
+outputs/
+.venv/
+__pycache__/
+*.pyc
+
+# Vendored mamba source (installed from PyPI on Kaggle instead)
+mamba-main 3/
+
+# Course material / documents not needed for training
+information you need to know until now/
+Short_Report_Template (1)/
+*.pptx
+~$*
+*.pdf
+tabe.png
+.DS_Store
+
+# Credentials — never commit
+kaggle.json
+.kaggle/

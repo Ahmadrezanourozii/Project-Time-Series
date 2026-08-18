@@ -1,0 +1,13 @@
+{
+  "id": "ah22reza/pd-mamba-train",
+  "title": "PD Mamba Train",
+  "code_file": "mamba-train.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_internet": true,
+  "dataset_sources": ["ah22reza/pd-gait-vgrf-windows"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
