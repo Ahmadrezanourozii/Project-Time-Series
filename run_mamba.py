@@ -445,6 +445,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--lr-grid", default="1e-3,3e-4")
     parser.add_argument("--dropout-grid", default="0.1,0.3")
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--seeds", default=None, help="Comma list; averages window scores across seed runs")
     parser.add_argument("--no-cosine", dest="cosine", action="store_false", help="Cosine+warmup is on by default")
     parser.add_argument("--aug-noise", type=float, default=0.0)
     parser.add_argument("--aug-channel-dropout", type=float, default=0.0)
@@ -457,6 +458,7 @@ def parse_args() -> argparse.Namespace:
     args.lr_grid = [float(x) for x in args.lr_grid.split(",")]
     args.dropout_grid = [float(x) for x in args.dropout_grid.split(",")]
     args.folds = [int(x) for x in args.folds.split(",")]
+    args.seeds = [int(x) for x in args.seeds.split(",")] if args.seeds else [args.seed]
     return args
 
 
@@ -500,8 +502,28 @@ def main() -> None:
     all_results: dict[str, dict] = {}
 
     for foot in feet:
-        fold_results = [run_fold_mamba(fold_idx, foot, table, args, model_kwargs) for fold_idx in args.folds]
-        pooled = pool_fold_results(fold_results)
+        # One pooled result per seed; scores averaged across seeds (window rows
+        # are identical and identically ordered, so a plain mean is aligned).
+        per_seed = []
+        for seed in args.seeds:
+            args.seed = seed
+            per_seed.append(
+                pool_fold_results([run_fold_mamba(f, foot, table, args, model_kwargs) for f in args.folds])
+            )
+        fold_results = [per_seed[0]]
+        pooled = per_seed[0]
+        if len(per_seed) > 1:
+            for other in per_seed[1:]:
+                if not np.array_equal(other.subject_id, pooled.subject_id):
+                    raise RuntimeError("Seed runs produced different row orders; cannot average")
+            mean_score = np.mean([p.y_score for p in per_seed], axis=0)
+            pooled = FoldResult(
+                fold_idx=-1, foot=foot, model_name="mamba",
+                subject_id=pooled.subject_id, window_idx=pooled.window_idx,
+                y_true=pooled.y_true, y_pred=(mean_score >= 0.5).astype(int), y_score=mean_score,
+                best_params={f"seed{s}": p.best_params for s, p in zip(args.seeds, per_seed)},
+            )
+            fold_results = per_seed
 
         if len(args.folds) == 5 and not args.smoke:
             counts = {s: int(np.sum(pooled.subject_id == s)) for s in set(pooled.subject_id)}
@@ -512,7 +534,7 @@ def main() -> None:
             "window": metrics_block(pooled, args.n_boot),
             "subject_mean_prob": metrics_block(aggregate_subjects(pooled, "mean_prob"), args.n_boot),
             "subject_majority": metrics_block(aggregate_subjects(pooled, "majority"), args.n_boot),
-            "best_params_per_fold": {str(f.fold_idx): f.best_params for f in fold_results},
+            "best_params_per_fold": pooled.best_params,
         }
         all_results[foot] = blocks
 
