@@ -122,6 +122,11 @@ def main() -> None:
 
     build_stat_windows(token_table, labels, 30, 10, OUT_DIR / "stat_windows_30s.npz")
     build_stat_windows(token_table, labels, 60, 15, OUT_DIR / "stat_windows_60s.npz")
+    # Dense variants: the 10 s/15 s steps yield only ~800/~360 windows total,
+    # which starves training. A 1-2 token step multiplies the sample count.
+    build_stat_windows(token_table, labels, 30, 2, OUT_DIR / "stat_windows_30s_dense.npz")
+    build_stat_windows(token_table, labels, 60, 4, OUT_DIR / "stat_windows_60s_dense.npz")
+    build_stat_windows(token_table, labels, 15, 1, OUT_DIR / "stat_windows_15s_dense.npz")
     build_subject_sequences(labels)
 
 
