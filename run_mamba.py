@@ -205,14 +205,18 @@ def _train_once(
 
     # num_workers=0: data is already an in-RAM tensor; forked workers only add
     # RAM pressure and fork+CUDA instability on Kaggle batch sessions.
+    n_train = len(train_split.y)
+    effective_bs = min(batch_size, n_train)
     loader = DataLoader(
         WindowDataset(train_split),
-        batch_size=batch_size,
+        batch_size=effective_bs,
         shuffle=True,
         num_workers=0,
         pin_memory=device.type == "cuda",
         generator=generator,
-        drop_last=True,
+        # drop_last guards BatchNorm-style size-1 failures; disabled when the
+        # dataset is so small (subject-level sequences) it would drop everything
+        drop_last=n_train > effective_bs,
     )
 
     best_state = deepcopy(model.state_dict())

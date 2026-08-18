@@ -110,9 +110,20 @@ def load_or_build_raw_windows(force_rebuild: bool = False) -> RawWindowTable:
 
 
 def select_foot_channels(table: RawWindowTable, foot: str) -> np.ndarray:
-    """Slice the channel dimension down to one foot-config. Returns (N, n_chan, T)."""
+    """Slice the channel dimension down to one foot-config. Returns (N, n_chan, T).
+
+    Raw tables have channels named exactly as in FOOT_CONFIGS (L1..TotalR);
+    feature tables name them '{channel}__{stat}' -- those are matched by their
+    channel prefix so left/right/both work for both table kinds.
+    """
     from baseline.config import FOOT_CONFIGS
 
     wanted = FOOT_CONFIGS[foot]
-    idx = [table.channels.index(ch) for ch in wanted]
+    if all(ch in table.channels for ch in wanted):
+        idx = [table.channels.index(ch) for ch in wanted]
+    else:
+        wanted_set = set(wanted)
+        idx = [i for i, ch in enumerate(table.channels) if ch.split("__")[0] in wanted_set]
+        if not idx:
+            raise ValueError(f"No channels match foot config {foot!r} in {table.channels[:5]}...")
     return table.data[:, idx, :]
