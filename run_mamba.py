@@ -39,7 +39,7 @@ from baseline.folds import FoldResult, pool_fold_results
 from baseline.metrics import bootstrap_metrics, compute_point_metrics, confusion_counts, summarize_bootstrap
 from baseline.reporting import plot_confusion_matrix, save_latex_table
 from dl.aggregate import aggregate_subjects
-from dl.config import EARLY_STOP_PATIENCE, WEIGHT_DECAY
+from dl.config import WEIGHT_DECAY
 from dl.datasets import FoldSplitData, WindowDataset, assemble_fold_splits, concat_splits
 from dl.seeding import fold_seed, set_all_seeds
 from dl.windows import RawWindowTable
@@ -154,6 +154,7 @@ def train_config(
     cosine: bool,
     noise_std: float,
     channel_dropout: float,
+    min_epochs: int = 0,
 ) -> tuple[nn.Module, int, float, int]:
     """Train one config; returns (model, best_epoch, best_val_auc, batch_size_used).
 
@@ -165,6 +166,7 @@ def train_config(
             return _train_once(
                 build_fn, train_split, val_split, device, seed, max_epochs, patience,
                 lr, batch_size, accum_steps, use_amp, cosine, noise_std, channel_dropout,
+                min_epochs,
             )
         except torch.cuda.OutOfMemoryError:
             torch.cuda.empty_cache()
@@ -178,13 +180,26 @@ def train_config(
 def _train_once(
     build_fn, train_split, val_split, device, seed, max_epochs, patience,
     lr, batch_size, accum_steps, use_amp, cosine, noise_std, channel_dropout,
+    min_epochs=0,
 ):
     set_all_seeds(seed)
     generator = torch.Generator().manual_seed(seed)
 
     model = build_fn().to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=lr, weight_decay=WEIGHT_DECAY)
-    scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs) if cosine else None
+    scheduler = None
+    if cosine:
+        # 3-epoch linear warmup then cosine decay -- stabilizes the early
+        # epochs where Mamba runs were observed to collapse on some folds.
+        warmup = min(3, max_epochs)
+
+        def lr_lambda(epoch: int) -> float:
+            if epoch < warmup:
+                return (epoch + 1) / warmup
+            progress = (epoch - warmup) / max(max_epochs - warmup, 1)
+            return 0.5 * (1 + np.cos(np.pi * progress))
+
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
     criterion = nn.CrossEntropyLoss()
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp and device.type == "cuda")
 
@@ -235,7 +250,7 @@ def _train_once(
             epochs_since_improve = 0
         else:
             epochs_since_improve += 1
-            if patience is not None and epochs_since_improve >= patience:
+            if patience is not None and epochs_since_improve >= patience and epoch >= min_epochs:
                 break
 
     if val_split is None:
@@ -266,26 +281,50 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
 
     grid = list(itertools.product(args.dropout_grid, args.lr_grid))
     best_combo, best_combo_auc, best_combo_epoch = None, -np.inf, 1
+    best_seed = base_seed
     for dropout, lr in grid:
         t0 = time.time()
         _, epoch, val_auc, batch_size = train_config(
             build_fn(dropout), splits["train"], splits["validation"], device, base_seed,
             args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
-            args.cosine, args.aug_noise, args.aug_channel_dropout,
+            args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
         )
         print(
             f"  fold {fold_idx} {foot}: dropout={dropout} lr={lr:g} -> val AUC {val_auc:.4f} "
-            f"(epoch {epoch}, {time.time() - t0:.0f}s)"
+            f"(epoch {epoch}, {time.time() - t0:.0f}s)",
+            flush=True,
         )
         if val_auc > best_combo_auc:
             best_combo_auc, best_combo, best_combo_epoch = val_auc, (dropout, lr), epoch
         if device.type == "cuda":
             torch.cuda.empty_cache()
 
+    # Collapse guard: some (fold, seed) pairs never leave AUC~0.5 while others
+    # reach 0.9+ -- retrain the winning combo with fresh seeds and keep the best.
+    retries = 0
+    while best_combo_auc < args.collapse_auc and retries < args.collapse_retries:
+        retries += 1
+        retry_seed = base_seed + 1000 * retries
+        dropout, lr = best_combo
+        _, epoch, val_auc, batch_size = train_config(
+            build_fn(dropout), splits["train"], splits["validation"], device, retry_seed,
+            args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
+            args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
+        )
+        print(
+            f"  fold {fold_idx} {foot}: collapse retry {retries} (seed {retry_seed}) "
+            f"-> val AUC {val_auc:.4f} (epoch {epoch})",
+            flush=True,
+        )
+        if val_auc > best_combo_auc:
+            best_combo_auc, best_combo_epoch, best_seed = val_auc, epoch, retry_seed
+        if device.type == "cuda":
+            torch.cuda.empty_cache()
+
     dropout, lr = best_combo
     refit_model, _, _, batch_size = train_config(
         build_fn(dropout), concat_splits(splits["train"], splits["validation"]), None, device,
-        base_seed, max(best_combo_epoch, 1), None, lr, batch_size, args.accum_steps, use_amp,
+        best_seed, max(best_combo_epoch, 1), None, lr, batch_size, args.accum_steps, use_amp,
         args.cosine, args.aug_noise, args.aug_channel_dropout,
     )
 
@@ -307,7 +346,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         y_true=test_split.y, y_pred=y_pred, y_score=y_score,
         best_params={
             "dropout": dropout, "lr": lr, "best_epoch": best_combo_epoch,
-            "val_auc": best_combo_auc, "batch_size": batch_size,
+            "val_auc": best_combo_auc, "batch_size": batch_size, "seed": best_seed,
         },
     )
 
@@ -393,13 +432,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--variant", default="mamba2", choices=["mamba1", "mamba2"])
     parser.add_argument("--d-state", type=int, default=64)
     parser.add_argument("--epochs", type=int, default=30)
-    parser.add_argument("--patience", type=int, default=EARLY_STOP_PATIENCE)
+    parser.add_argument("--patience", type=int, default=6)
+    parser.add_argument("--min-epochs", type=int, default=8, help="No early stop before this epoch")
+    parser.add_argument("--collapse-auc", type=float, default=0.70, help="Retry fold when best val AUC is below this")
+    parser.add_argument("--collapse-retries", type=int, default=2)
     parser.add_argument("--batch-size", type=int, default=0, help="0 = auto from sequence length")
     parser.add_argument("--accum-steps", type=int, default=1)
     parser.add_argument("--lr-grid", default="1e-3,3e-4")
     parser.add_argument("--dropout-grid", default="0.1,0.3")
     parser.add_argument("--seed", type=int, default=42)
-    parser.add_argument("--cosine", action="store_true")
+    parser.add_argument("--no-cosine", dest="cosine", action="store_false", help="Cosine+warmup is on by default")
     parser.add_argument("--aug-noise", type=float, default=0.0)
     parser.add_argument("--aug-channel-dropout", type=float, default=0.0)
     parser.add_argument("--no-amp", dest="amp", action="store_false")
@@ -429,6 +471,8 @@ def main() -> None:
         args.folds = [1]
         args.epochs = 2
         args.patience = None
+        args.min_epochs = 0
+        args.collapse_retries = 0
         args.model_size = "small"
         args.lr_grid = args.lr_grid[:1]
         args.dropout_grid = args.dropout_grid[:1]
