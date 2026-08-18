@@ -65,9 +65,14 @@ def main() -> None:
             step_samples = int(args.step_sec * FS_HZ)
             starts = window_start_indices(len(values), window_samples, step_samples)
             if not starts:
-                print(f"WARNING: {subject_id} recording too short ({len(values)} samples), skipped")
-                continue
-            windows = np.stack([values[s : s + window_samples] for s in starts])  # (n, T, C)
+                # Recording shorter than one window (5 Ju subjects at 60 s):
+                # zero-pad to a single window so every subject stays covered.
+                print(f"NOTE: {subject_id} shorter than window ({len(values)} samples), zero-padded")
+                padded = np.zeros((window_samples, values.shape[1]), dtype=np.float32)
+                padded[: len(values)] = values
+                windows = padded[None]
+            else:
+                windows = np.stack([values[s : s + window_samples] for s in starts])  # (n, T, C)
 
         windows = np.transpose(windows, (0, 2, 1))  # (n, C, T)
         n_win = windows.shape[0]
