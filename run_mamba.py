@@ -188,11 +188,13 @@ def _train_once(
     criterion = nn.CrossEntropyLoss()
     scaler = torch.amp.GradScaler("cuda", enabled=use_amp and device.type == "cuda")
 
+    # num_workers=0: data is already an in-RAM tensor; forked workers only add
+    # RAM pressure and fork+CUDA instability on Kaggle batch sessions.
     loader = DataLoader(
         WindowDataset(train_split),
         batch_size=batch_size,
         shuffle=True,
-        num_workers=2 if device.type == "cuda" else 0,
+        num_workers=0,
         pin_memory=device.type == "cuda",
         generator=generator,
         drop_last=True,
