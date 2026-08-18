@@ -29,6 +29,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import numpy as np
+import pandas as pd
 import torch
 from sklearn.metrics import roc_auc_score
 from torch import nn
@@ -280,15 +281,17 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
     def build_fn(dropout: float):
         return lambda: MambaClassifier(
             in_channels=in_channels, dropout=dropout, variant=args.variant,
-            grad_checkpoint=args.grad_checkpoint, **model_kwargs,
+            grad_checkpoint=args.grad_checkpoint, bidirectional=args.bidirectional,
+            pooling=args.pooling, **model_kwargs,
         )
 
     grid = list(itertools.product(args.dropout_grid, args.lr_grid))
     best_combo, best_combo_auc, best_combo_epoch = None, -np.inf, 1
     best_seed = base_seed
+    best_val_model = None
     for dropout, lr in grid:
         t0 = time.time()
-        _, epoch, val_auc, batch_size = train_config(
+        combo_model, epoch, val_auc, batch_size = train_config(
             build_fn(dropout), splits["train"], splits["validation"], device, base_seed,
             args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
             args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
@@ -300,6 +303,9 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         )
         if val_auc > best_combo_auc:
             best_combo_auc, best_combo, best_combo_epoch = val_auc, (dropout, lr), epoch
+            best_val_model = combo_model
+        else:
+            del combo_model
         if device.type == "cuda":
             torch.cuda.empty_cache()
 
@@ -310,7 +316,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         retries += 1
         retry_seed = base_seed + 1000 * retries
         dropout, lr = best_combo
-        _, epoch, val_auc, batch_size = train_config(
+        retry_model, epoch, val_auc, batch_size = train_config(
             build_fn(dropout), splits["train"], splits["validation"], device, retry_seed,
             args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
             args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
@@ -322,8 +328,34 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         )
         if val_auc > best_combo_auc:
             best_combo_auc, best_combo_epoch, best_seed = val_auc, epoch, retry_seed
+            best_val_model = retry_model
         if device.type == "cuda":
             torch.cuda.empty_cache()
+
+    # Decision threshold calibrated on the VALIDATION subjects, using the
+    # grid-search model (trained on train only, so validation is truly held
+    # out). Test data is never involved in choosing it.
+    threshold = 0.5
+    if args.calibrate_threshold and best_val_model is not None:
+        val_split = splits["validation"]
+        val_scores = predict_scores(best_val_model, val_split.X, device, batch_size, use_amp)
+        val_df = pd.DataFrame({"subject_id": val_split.subject_id, "y": val_split.y, "s": val_scores})
+        subj = val_df.groupby("subject_id").agg(y=("y", "first"), s=("s", "mean"))
+        candidates = np.unique(np.round(subj["s"].to_numpy(), 4))
+        best_bacc = -1.0
+        for cand in candidates:
+            pred = (subj["s"].to_numpy() >= cand).astype(int)
+            tp = np.sum((subj["y"] == 1) & (pred == 1)); fn = np.sum((subj["y"] == 1) & (pred == 0))
+            tn = np.sum((subj["y"] == 0) & (pred == 0)); fp = np.sum((subj["y"] == 0) & (pred == 1))
+            sens = tp / (tp + fn) if tp + fn else 0.0
+            spec = tn / (tn + fp) if tn + fp else 0.0
+            bacc = 0.5 * (sens + spec)
+            if bacc > best_bacc:
+                best_bacc, threshold = bacc, float(cand)
+        print(f"  fold {fold_idx} {foot}: threshold={threshold:.3f} (val balanced acc {best_bacc:.3f})", flush=True)
+    del best_val_model
+    if device.type == "cuda":
+        torch.cuda.empty_cache()
 
     dropout, lr = best_combo
     refit_model, _, _, batch_size = train_config(
@@ -334,7 +366,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
 
     test_split = splits["test"]
     y_score = predict_scores(refit_model, test_split.X, device, batch_size, use_amp)
-    y_pred = (y_score >= 0.5).astype(int)
+    y_pred = (y_score >= threshold).astype(int)
 
     if args.checkpoint_dir:
         ckpt_dir = Path(args.checkpoint_dir)
@@ -351,6 +383,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         best_params={
             "dropout": dropout, "lr": lr, "best_epoch": best_combo_epoch,
             "val_auc": best_combo_auc, "batch_size": batch_size, "seed": best_seed,
+            "threshold": threshold,
         },
     )
 
@@ -435,6 +468,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--model-size", default="base", choices=list(MODEL_SIZES))
     parser.add_argument("--variant", default="mamba2", choices=["mamba1", "mamba2"])
     parser.add_argument("--d-state", type=int, default=64)
+    parser.add_argument("--unidirectional", dest="bidirectional", action="store_false")
+    parser.add_argument("--pooling", default="mean_max", choices=["mean", "mean_max"])
+    parser.add_argument("--no-calibrate-threshold", dest="calibrate_threshold", action="store_false")
     parser.add_argument("--epochs", type=int, default=30)
     parser.add_argument("--patience", type=int, default=6)
     parser.add_argument("--min-epochs", type=int, default=8, help="No early stop before this epoch")
@@ -505,11 +541,16 @@ def main() -> None:
         # One pooled result per seed; scores averaged across seeds (window rows
         # are identical and identically ordered, so a plain mean is aligned).
         per_seed = []
+        # Each subject's threshold is the one calibrated on its own fold's
+        # validation split, averaged over seeds when ensembling.
+        thresholds: dict[str, float] = {}
         for seed in args.seeds:
             args.seed = seed
-            per_seed.append(
-                pool_fold_results([run_fold_mamba(f, foot, table, args, model_kwargs) for f in args.folds])
-            )
+            seed_folds = [run_fold_mamba(f, foot, table, args, model_kwargs) for f in args.folds]
+            for fold_result in seed_folds:
+                for sid in np.unique(fold_result.subject_id):
+                    thresholds[sid] = thresholds.get(sid, 0.0) + fold_result.best_params["threshold"] / len(args.seeds)
+            per_seed.append(pool_fold_results(seed_folds))
         fold_results = [per_seed[0]]
         pooled = per_seed[0]
         if len(per_seed) > 1:
@@ -532,15 +573,16 @@ def main() -> None:
 
         blocks = {
             "window": metrics_block(pooled, args.n_boot),
-            "subject_mean_prob": metrics_block(aggregate_subjects(pooled, "mean_prob"), args.n_boot),
+            "subject_mean_prob": metrics_block(aggregate_subjects(pooled, "mean_prob", thresholds), args.n_boot),
             "subject_majority": metrics_block(aggregate_subjects(pooled, "majority"), args.n_boot),
+            "subject_mean_prob_t05": metrics_block(aggregate_subjects(pooled, "mean_prob"), args.n_boot),
             "best_params_per_fold": pooled.best_params,
         }
         all_results[foot] = blocks
 
         save_predictions(pooled, args.output_dir / "predictions" / f"mamba_{foot}_pooled.csv")
         save_predictions(
-            aggregate_subjects(pooled, "mean_prob"),
+            aggregate_subjects(pooled, "mean_prob", thresholds),
             args.output_dir / "predictions" / f"mamba_{foot}_subjects.csv",
         )
         fmt = lambda v: "nan" if v is None else f"{v:.3f}"

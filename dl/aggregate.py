@@ -13,10 +13,14 @@ import numpy as np
 from baseline.folds import FoldResult
 
 
-def aggregate_subjects(pooled: FoldResult, rule: str = "mean_prob") -> FoldResult:
-    """One row per subject. rule: 'mean_prob' (mean window score, threshold
-    0.5) or 'majority' (majority vote of window predictions; score kept as
-    mean probability so AUC stays defined)."""
+def aggregate_subjects(pooled: FoldResult, rule: str = "mean_prob", thresholds: dict | None = None) -> FoldResult:
+    """One row per subject. rule: 'mean_prob' (mean window score vs threshold)
+    or 'majority' (majority vote of window predictions; score kept as mean
+    probability so AUC stays defined).
+
+    thresholds maps subject_id -> decision threshold (the value calibrated on
+    that subject's fold's validation split); missing entries fall back to 0.5.
+    """
     subjects = np.unique(pooled.subject_id)
     y_true, y_pred, y_score = [], [], []
     for subject in subjects:
@@ -26,7 +30,7 @@ def aggregate_subjects(pooled: FoldResult, rule: str = "mean_prob") -> FoldResul
             raise ValueError(f"Subject {subject} has inconsistent window labels")
         mean_score = float(np.mean(pooled.y_score[mask]))
         if rule == "mean_prob":
-            pred = int(mean_score >= 0.5)
+            pred = int(mean_score >= (thresholds or {}).get(subject, 0.5))
         elif rule == "majority":
             pred = int(np.mean(pooled.y_pred[mask]) >= 0.5)
         else:

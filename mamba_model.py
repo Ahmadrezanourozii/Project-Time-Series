@@ -41,6 +41,29 @@ def _build_mixer(variant: str, d_model: int, d_state: int, expand: int) -> nn.Mo
     raise ValueError(f"Unknown variant: {variant}")
 
 
+class BiMambaLayer(nn.Module):
+    """Bidirectional Mamba block.
+
+    A Mamba SSM is causal: token t only sees tokens <= t. For sequence
+    *classification* (as opposed to generation) the whole window is available,
+    so a second mixer runs over the reversed sequence and the two directions
+    are summed -- every token then sees the full context.
+    """
+
+    def __init__(self, variant: str, d_model: int, d_state: int, expand: int, bidirectional: bool) -> None:
+        super().__init__()
+        self.norm = nn.LayerNorm(d_model)
+        self.fwd = _build_mixer(variant, d_model, d_state, expand)
+        self.bwd = _build_mixer(variant, d_model, d_state, expand) if bidirectional else None
+
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
+        h = self.norm(x)
+        out = self.fwd(h)
+        if self.bwd is not None:
+            out = out + self.bwd(h.flip(dims=[1])).flip(dims=[1])
+        return out
+
+
 class MambaClassifier(nn.Module):
     def __init__(
         self,
@@ -53,28 +76,35 @@ class MambaClassifier(nn.Module):
         dropout: float = 0.1,
         variant: str = "mamba2",
         grad_checkpoint: bool = False,
+        bidirectional: bool = True,
+        pooling: str = "mean_max",
     ) -> None:
         super().__init__()
         if (d_model * expand) % 64 != 0:
             raise ValueError(f"d_model*expand={d_model * expand} must be divisible by 64 (Mamba2 headdim)")
         self.grad_checkpoint = grad_checkpoint
+        self.pooling = pooling
 
         self.in_proj = nn.Linear(in_channels, d_model)
-        self.norms = nn.ModuleList(nn.LayerNorm(d_model) for _ in range(n_layers))
-        self.mixers = nn.ModuleList(
-            _build_mixer(variant, d_model, d_state, expand) for _ in range(n_layers)
+        self.layers = nn.ModuleList(
+            BiMambaLayer(variant, d_model, d_state, expand, bidirectional) for _ in range(n_layers)
         )
         self.final_norm = nn.LayerNorm(d_model)
         self.dropout = nn.Dropout(dropout)
-        self.head = nn.Linear(d_model, num_classes)
+        head_dim = d_model * (2 if pooling == "mean_max" else 1)
+        self.head = nn.Linear(head_dim, num_classes)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x.transpose(1, 2)  # (B, C, T) -> (B, T, C)
         x = self.in_proj(x)
-        for norm, mixer in zip(self.norms, self.mixers):
+        for layer in self.layers:
             if self.grad_checkpoint and self.training:
-                x = x + checkpoint(lambda inp, m=mixer, n=norm: m(n(inp)), x, use_reentrant=False)
+                x = x + checkpoint(layer, x, use_reentrant=False)
             else:
-                x = x + mixer(norm(x))
-        x = self.final_norm(x).mean(dim=1)  # mean-pool over time
-        return self.head(self.dropout(x))
+                x = x + layer(x)
+        x = self.final_norm(x)
+        if self.pooling == "mean_max":
+            pooled = torch.cat([x.mean(dim=1), x.max(dim=1).values], dim=-1)
+        else:
+            pooled = x.mean(dim=1)
+        return self.head(self.dropout(pooled))
