@@ -43,14 +43,23 @@ identical code and the same aggregation rule.
 | 1D-ResNet | 66 ± 5 | 67 ± 5 | 66 ± 5 | 0.66 | 56 | 76 | 0.76 |
 | LSTM | 63 ± 5 | 64 ± 5 | 63 ± 5 | 0.63 | 54 | 72 | 0.68 |
 | Random Forest | 73 ± 4 | 74 ± 4 | 73 ± 4 | 0.73 | 74 | 72 | 0.82 |
-| **Mamba (ours)** | **78 ± 4** | **79 ± 4** | **78 ± 4** | **0.78** | 82 | 74 | 0.82 |
+| **Mamba (ours)** | **75 ± 4** | **77 ± 4** | **75 ± 4** | **0.75** | 86 | 64 | **0.85** |
 
-Per foot (Mamba, 3-seed ensemble): left 70, right **79**, both 78.
-Confusion (both feet, subject level): TP 41, FN 9, TN 37, FP 13.
+Per foot (Mamba, 3 seeds): left 74, right 71, both 75. Random Forest is better
+on the right foot (78) and level on the left (74), so the win is on both feet
+and on AUC, not across the board.
+Confusion (both feet, subject level): TP 43, FN 7, TN 32, FP 18.
 
-Best single run ever observed: **0.800** (`kaggle_run12/bi_bi_s30_lg`, single
-seed 42). The reported 0.78 is the 3-seed average — lower but honest, since
-single seeds ranged 0.72–0.80.
+**Which configuration is "the" model, and why it changed.** The reported model
+is 60 s amplitude-statistic tokens with the base encoder, 3 seeds
+(`outputs/mamba/final/primary_model/`). It is *not* the configuration with the
+best test accuracy — that was 30 s tokens with the large encoder at 0.78–0.80.
+The leakage audit (§5, problem 12) showed that picking among 45 configurations
+by pooled test accuracy leaks the test set into the model definition. Ranking
+the same 45 by mean validation AUC picks the 60 s/base model instead, and its
+test accuracy of 0.75 is the number that estimates performance on new subjects.
+The ~3-point difference is the optimism a test-based search would have added.
+Both criteria agree on the part that matters: amplitude-statistic tokens win.
 
 ### The two-protocol story (the project's main methodological finding)
 
@@ -216,6 +225,18 @@ dataset with 100 subjects and this protocol — not a tuning failure.
 | 9 | Long windows dropped 5 short recordings (95 subjects) | `Ju` recordings are as short as 39 s | zero-pad recordings shorter than one window |
 | 10 | LaTeX missing (`pdflatex not found`); BasicTeX needs sudo | — | TinyTeX in `~/Library/TinyTeX` (no sudo), then `tlmgr install multirow booktabs psnfss courier times helvetic` |
 | 11 | A fabricated number (97 %) sat in the report's protocol table | written before that run finished | replaced with `---`; all surrounding claims rewritten to cite only measured baselines |
+| 12 | **Configurations were compared on pooled test accuracy** | each run kept train/val/test apart, but the *choice between runs* used test | rank all 45 by mean validation AUC instead; retrain the winner. Costs ~3 accuracy points |
+| 13 | `predict.py` built 30-token windows for a 60-token model | Mamba accepts any T, so nothing errored | window length travels in `manifest.json`; inference refuses to guess |
+| 14 | Bundle would not load without `mamba_ssm` | fallback block has a different parameter layout | explicit one-line error pointing at the Kaggle notebook |
+
+### The audit itself
+
+`scripts/audit_leakage.py` checks the invariants empirically rather than by
+reading code — it reproduces the test split by hand from training statistics and
+compares against what the pipeline produced, confirms the same split is *not*
+reproducible from all-data statistics, recomputes one recording's tokens in
+isolation, and greps the threshold block for any reference to the test split.
+Run it before submitting anything: `python scripts/audit_leakage.py`.
 
 ---
 
@@ -287,10 +308,32 @@ averages per recording.
 **Verified**: the windows `predict.py` rebuilds from a raw file are
 *byte-identical* (max abs diff 0.0) to the cached training windows for the same
 subject, for both `both` and `left` channel selections. This is the check that
-matters — if tokenisation drifted, inference would be silently wrong.
+matters — if tokenisation drifted, inference would be silently wrong. The full
+path was then run on Kaggle over 20 raw recordings and produced sensible,
+well-separated scores (controls 0.03–0.23, patients 0.79–0.97).
+
+**Read this before quoting any number from `predict.py`.** The bundle holds one
+model per (fold, seed). For a genuinely new subject that is exactly right: no
+fold model has seen them, so averaging all five is a legitimate ensemble. But
+the 20 recordings used for the smoke test were fold 1's test subjects, which
+means folds 2–5 had them in *training*. The resulting 100 % accuracy is
+therefore meaningless as a performance estimate — it only shows the path runs
+end to end. The honest estimate for unseen subjects stays the 75 % of
+Table~2. The same effect explains the mean score gap of 0.20 against
+`run_mamba.py`'s predictions, which use only the fold that held each subject
+out.
 
 **Never** recompute normalisation statistics from the new cohort: that leaks the
 test distribution into its own predictions.
+
+Two defects that testing caught here, both of which would have failed silently:
+- `predict.py` hardcoded 30-token windows while the deployed model uses 60. A
+  Mamba encoder accepts any sequence length, so this produced plausible but
+  wrong scores. The window length now travels in `manifest.json` and inference
+  refuses to guess it.
+- Loading a bundle without `mamba_ssm` failed with a wall of shape mismatches,
+  because the pure-PyTorch fallback block has a different parameter layout.
+  Inference now says so in one line. Run it where the CUDA kernels exist.
 
 ---
 
