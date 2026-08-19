@@ -11,15 +11,16 @@ removed a training collapse on two folds -- and from encoder capacity, while
 the bidirectional extension of the causal scan brought no measurable benefit
 at matched size.
 
-The second contribution is methodological. Re-running the same models with a
-window-wise split -- the split implicitly used in much of the literature on
-this database -- raises accuracy above 95\,\% for the Random Forest and to
-88\,\% for the SVM, without any change to features, models or metrics. On a
-dataset where a single recording yields more than a hundred correlated
-windows, the split unit is not a detail; a published accuracy on this database
-is uninterpretable unless the split unit is stated. We therefore report the
-subject-wise numbers as our result and the window-wise numbers only as a
-reference for what the same pipeline would claim under the weaker protocol.
+The second contribution is methodological. Re-running the same baselines with
+a window-wise split -- the split implicitly used in much of the literature on
+this database -- raises Random Forest accuracy from 73\,\% to 98\,\% and SVM
+accuracy from 68\,\% to 88\,\%, without any change to features, models or
+metrics. On a dataset where a single recording yields more than a hundred
+correlated windows, the split unit is not a detail; a published accuracy on
+this database is uninterpretable unless the split unit is stated. We therefore
+report the subject-wise numbers as our result and the window-wise numbers only
+as a reference for what the same features would claim under the weaker
+protocol.
 
 \textbf{Future directions.} The most promising direction is data: pooling the
 dual-task recordings and other public VGRF cohorts would enlarge an effective

@@ -8,8 +8,8 @@ baseline (LSTM, 63\,\%). Second, what the model is fed matters more than how
 large it is: replacing raw samples by per-second statistics gained seven
 points and, more importantly, removed a training collapse that no amount of
 capacity or seed averaging had fixed. Third, the evaluation protocol dominates
-everything else. The same pipeline reports 78\,\% or above 95\,\% depending
-only on whether windows or subjects define the split.
+everything else: the same Random Forest reports 73\,\% or 98\,\% depending
+only on whether subjects or windows define the split.
 
 \textbf{Interpretation.} The collapse on folds~1 and~4 with raw input is
 informative. With 500 samples per window and 60 training subjects, a model

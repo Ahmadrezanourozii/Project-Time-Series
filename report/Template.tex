@@ -26,11 +26,13 @@ $0.78$ weighted F1 on both feet and $79 \pm 4$\,\% on the right foot,
 outperforming the Random Forest, SVM-RBF, 1D-ResNet and LSTM baselines. An
 ablation shows the gain comes from describing each second by its channel
 statistics rather than feeding raw samples, which also removes a training
-collapse observed on two folds. Under the window-wise protocol that is common
-in the literature, where windows of one subject appear in training and test,
-the same pipeline exceeds $95$\,\% -- an inflation of roughly twenty accuracy
-points caused solely by the split. We report the subject-wise numbers as our
-result and the window-wise numbers only as a cautionary reference.
+collapse observed on two folds. Re-evaluating the same features and baselines
+under the window-wise protocol that is common in the literature, where windows
+of one subject appear in training and test, raises Random Forest accuracy from
+$73$\,\% to $98$\,\% and SVM accuracy from $68$\,\% to $88$\,\% -- an
+inflation of twenty to twenty-five points caused solely by the split. We
+report the subject-wise numbers as our result and the window-wise numbers only
+as a cautionary reference.
 \end{abstract}
 
 \begin{keywords}

@@ -145,7 +145,8 @@ Figure~\ref{fig:confusion} shows the confusion matrices.
 To quantify the influence of the split unit, we repeated the evaluation with
 windows -- rather than subjects -- assigned at random to the 60/20/20 splits,
 keeping the data, features, models, metrics and code identical
-(Figure~\ref{fig:protocols}). Table~\ref{tab:protocols} contrasts the two.
+(Figure~\ref{fig:protocols}). Table~\ref{tab:protocols} contrasts the two for
+the two classical baselines, whose retraining under the leaky split is cheap.
 Accuracy rises by twenty points or more, and the Random Forest reaches
 98\,\%. Under this protocol a per-subject decision is meaningless, because a
 subject's windows are distributed across training and test, so only
@@ -180,7 +181,7 @@ reference point for the literature.
     \midrule
     SVM-RBF        & 68 & 88 \\
     Random Forest  & 73 & 98 \\
-    Mamba (ours)   & \textbf{78} & 97 \\
+    Mamba (ours)   & \textbf{78} & --- \\
     \bottomrule
   \end{tabular}
 \end{table}
