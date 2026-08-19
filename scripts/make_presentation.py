@@ -236,8 +236,8 @@ def main() -> None:
 
     # 8 — per foot
     s = add(prs, "Nur Titel | weiß", "Results per foot configuration")
-    picture(s, FIGS / "fig3_results.png", 0.6, 1.6, w=12.1)
-    textbox(s, 0.75, 5.75, 11.8, 0.9, [
+    picture(s, FIGS / "fig3_results.png", 0.6, 1.5, w=11.6)
+    textbox(s, 0.75, 6.0, 11.8, 0.9, [
         "Mamba is best on the right foot (79%) and on both feet (78%); Random Forest keeps a small edge on the left foot (74% vs 70%).",
     ], size=12, bullet=False)
 
