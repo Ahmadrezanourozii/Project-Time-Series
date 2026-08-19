@@ -42,11 +42,24 @@ class WindowDataset(Dataset):
         return self.X[idx], self.y[idx]
 
 
-def _fit_normalize(train_X: np.ndarray, *others: np.ndarray) -> list[np.ndarray]:
+def fit_normalizer(train_X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Per-channel mean/std over training windows and timesteps, shape (1, C, 1).
+
+    Returned so they can be stored alongside a trained model: inference on new
+    recordings must reuse the training statistics, never recompute its own.
+    """
     mean = train_X.mean(axis=(0, 2), keepdims=True).astype(np.float32)
     std = train_X.std(axis=(0, 2), keepdims=True).astype(np.float32)
-    std = np.where(std < 1e-8, 1.0, std).astype(np.float32)
-    return [((arr - mean) / std).astype(np.float32) for arr in (train_X, *others)]
+    return mean, np.where(std < 1e-8, 1.0, std).astype(np.float32)
+
+
+def apply_normalizer(X: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
+    return ((X - mean) / std).astype(np.float32)
+
+
+def _fit_normalize(train_X: np.ndarray, *others: np.ndarray) -> list[np.ndarray]:
+    mean, std = fit_normalizer(train_X)
+    return [apply_normalizer(arr, mean, std) for arr in (train_X, *others)]
 
 
 def assemble_fold_splits(fold_idx: int, foot: str, table: RawWindowTable) -> dict[str, FoldSplitData]:

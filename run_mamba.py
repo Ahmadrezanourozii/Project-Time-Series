@@ -42,7 +42,14 @@ from baseline.reporting import plot_confusion_matrix, save_latex_table
 from dl.aggregate import aggregate_subjects
 from dl.config import WEIGHT_DECAY
 from baseline.config import LABEL_TO_INT
-from dl.datasets import FoldSplitData, WindowDataset, _fit_normalize, assemble_fold_splits, concat_splits
+from dl.datasets import (
+    FoldSplitData,
+    WindowDataset,
+    _fit_normalize,
+    assemble_fold_splits,
+    concat_splits,
+    fit_normalizer,
+)
 from dl.seeding import fold_seed, set_all_seeds
 from dl.windows import RawWindowTable, select_foot_channels
 from mamba_model import HAVE_MAMBA_SSM, MODEL_SIZES, MambaClassifier
@@ -265,7 +272,7 @@ def _train_once(
     return model, best_epoch, best_auc, batch_size
 
 
-def assemble_window_random_splits(fold_idx: int, foot: str, table: RawWindowTable, seed: int) -> dict[str, FoldSplitData]:
+def assemble_window_random_splits(fold_idx: int, foot: str, table: RawWindowTable) -> dict[str, FoldSplitData]:
     """Deliberately LEAKY reference protocol: windows -- not subjects -- are
     split 60/20/20 at random (stratified by label), so windows of the same
     subject occur in train and test. This is the protocol implicitly used by
@@ -275,7 +282,9 @@ def assemble_window_random_splits(fold_idx: int, foot: str, table: RawWindowTabl
     foot_data = select_foot_channels(table, foot)
     y_all = np.array([LABEL_TO_INT[lbl] for lbl in table.label], dtype=np.int64)
 
-    rng = np.random.RandomState(1000 + fold_idx + seed)
+    # Seeded by the fold only: the split defines the protocol, so it must stay
+    # identical across model seeds (otherwise seed ensembling cannot align rows).
+    rng = np.random.RandomState(1000 + fold_idx)
     assign = np.empty(len(y_all), dtype=object)
     for label_value in np.unique(y_all):
         idx = np.flatnonzero(y_all == label_value)
@@ -294,9 +303,22 @@ def assemble_window_random_splits(fold_idx: int, foot: str, table: RawWindowTabl
     }
 
 
+def fold_normalizer(fold_idx: int, foot: str, table: RawWindowTable) -> tuple[np.ndarray, np.ndarray]:
+    """The (mean, std) that assemble_fold_splits fits for this fold.
+
+    Recomputed from the raw table because assemble_fold_splits returns data
+    already normalised; identical rule -- training subjects only.
+    """
+    foot_data = select_foot_channels(table, foot)
+    assignment = folds_mod.load_fold_assignment(fold_idx)
+    train_subjects = set(assignment.loc[assignment["split"] == "train", "subject_id"])
+    mask = np.array([sid in train_subjects for sid in table.subject_id])
+    return fit_normalizer(foot_data[mask])
+
+
 def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_kwargs: dict) -> FoldResult:
     if args.split_mode == "window":
-        splits = assemble_window_random_splits(fold_idx, foot, table, args.seed)
+        splits = assemble_window_random_splits(fold_idx, foot, table)
     else:
         splits = assemble_fold_splits(fold_idx, foot, table)
         for split_a, split_b in [("train", "test"), ("validation", "test"), ("train", "validation")]:
@@ -405,6 +427,27 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
         ckpt_dir = Path(args.checkpoint_dir)
         ckpt_dir.mkdir(parents=True, exist_ok=True)
         torch.save(refit_model.state_dict(), ckpt_dir / f"mamba_{foot}_fold{fold_idx}_seed{args.seed}.pt")
+
+    if args.export_bundle:
+        # Store the weights together with the normalisation statistics of the
+        # data they were trained on -- inference on new recordings must reuse
+        # exactly these, never statistics recomputed from the new data.
+        bundle_dir = Path(args.export_bundle)
+        bundle_dir.mkdir(parents=True, exist_ok=True)
+        trainval = concat_splits(splits["train"], splits["validation"])
+        mean, std = fold_normalizer(fold_idx, foot, table)
+        torch.save(
+            {
+                "state_dict": {k: v.cpu() for k, v in refit_model.state_dict().items()},
+                "mean": mean, "std": std,
+                "in_channels": in_channels, "n_train_windows": int(len(trainval.y)),
+                "model_kwargs": model_kwargs, "variant": args.variant,
+                "bidirectional": args.bidirectional, "pooling": args.pooling,
+                "dropout": dropout, "threshold": threshold, "foot": foot,
+                "fold_idx": fold_idx, "seed": args.seed,
+            },
+            bundle_dir / f"mamba_{foot}_fold{fold_idx}_seed{args.seed}.pt",
+        )
     del refit_model
     if device.type == "cuda":
         torch.cuda.empty_cache()
@@ -498,6 +541,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--fold-json", type=Path, default=None, help="Override path to fold_assignments.json")
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/mamba"))
     parser.add_argument("--checkpoint-dir", type=Path, default=None)
+    parser.add_argument(
+        "--export-bundle",
+        type=Path,
+        default=None,
+        help="Directory to write inference bundles (weights + normalisation stats + threshold)",
+    )
     parser.add_argument("--foot", default="all", choices=["left", "right", "both", "all"])
     parser.add_argument(
         "--split-mode",
@@ -657,6 +706,25 @@ def main() -> None:
         env["mamba_ssm_version"] = mamba_ssm.__version__
 
     args_json = {k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()}
+    if args.export_bundle:
+        Path(args.export_bundle).mkdir(parents=True, exist_ok=True)
+        (Path(args.export_bundle) / "manifest.json").write_text(
+            json.dumps(
+                {
+                    "npz": str(args.npz),
+                    "token_kind": Path(args.npz).stem,
+                    "feet": feet,
+                    "folds": args.folds,
+                    "seeds": args.seeds,
+                    "model_size": args.model_size,
+                    "variant": args.variant,
+                    "env": env,
+                    "note": "Each .pt holds weights plus the normalisation statistics of its "
+                            "fold's training subjects; predict.py averages the folds.",
+                },
+                indent=1,
+            )
+        )
     payload = {"env": env, "args": args_json, "results": all_results, "runtime_sec": round(time.time() - t_start, 1)}
     args.output_dir.mkdir(parents=True, exist_ok=True)
     (args.output_dir / "results.json").write_text(json.dumps(payload, indent=1))
