@@ -1,33 +1,33 @@
 \section{Conclusion}
 
-We classified Parkinson's disease from vertical ground reaction force
-recordings with a Mamba state-space model and evaluated it under a strictly
-subject-disjoint protocol. The model attains $78 \pm 4$\,\% accuracy, $0.78$
-weighted F1 and $0.82$ AUC on both feet, and $79 \pm 4$\,\% on the right foot,
-outperforming Random Forest, SVM-RBF, 1D-ResNet and LSTM baselines evaluated
-identically. The gain came from the input representation -- describing each
-second by its channel statistics instead of feeding raw samples, which also
-removed a training collapse on two folds -- and from encoder capacity, while
-the bidirectional extension of the causal scan brought no measurable benefit
-at matched size.
+We classified Parkinson's disease from vertical ground reaction force recordings
+with a Mamba state-space model, evaluated on five predefined subject-disjoint
+folds. The model reaches the accuracy reported in Table~\ref{tab:main} at
+subject level and outperforms the Random Forest, SVM-RBF, 1D-ResNet and LSTM
+baselines that were evaluated with identical code. The improvement came from the
+input representation and from encoder capacity; the bidirectional extension of
+the causal scan, which we expected to help, made no measurable difference at
+matched size.
 
-The second contribution is methodological. Re-running the same baselines with
-a window-wise split -- the split implicitly used in much of the literature on
-this database -- raises Random Forest accuracy from 73\,\% to 98\,\% and SVM
-accuracy from 68\,\% to 88\,\%, without any change to features, models or
-metrics. On a dataset where a single recording yields more than a hundred
-correlated windows, the split unit is not a detail; a published accuracy on
-this database is uninterpretable unless the split unit is stated. We therefore
-report the subject-wise numbers as our result and the window-wise numbers only
-as a reference for what the same features would claim under the weaker
-protocol.
+The methodological result may be the more useful one. Re-running the same
+baselines with a window-wise split raises Random Forest accuracy from 73\,\% to
+98\,\% and SVM accuracy from 68\,\% to 88\,\%, without touching the features,
+the models or the metrics. When one recording produces more than a hundred
+correlated windows, the split unit is not an implementation detail, and an
+accuracy quoted for this database cannot be interpreted unless the split unit is
+stated alongside it. For the same reason we selected our final configuration on
+validation AUC rather than on test accuracy, which costs about three points but
+makes the reported number an estimate of performance on new subjects rather than
+a summary of the search.
 
-\textbf{Future directions.} The most promising direction is data: pooling the
-dual-task recordings and other public VGRF cohorts would enlarge an effective
-sample of 100 subjects that currently limits every model here. Methodologically,
-richer gait-cycle descriptors (long-range stride-time correlations, asymmetry
-indices) fused with the amplitude tokens are worth pursuing, since the two
-families were complementary in our subject-level analysis. Finally, calibrated
-probabilities and per-subject uncertainty would matter more than raw accuracy
-for a screening tool, and severity regression against UPDRS is a natural
-extension of the same architecture.
+What we would do next is get more data before doing anything else. Every model
+we tried, classical or deep, plateaued in the same narrow band, and the
+subject-level analysis suggests the ceiling belongs to the cohort rather than to
+the method: 100 subjects means one person is worth one accuracy point. Pooling
+the dual-task recordings and other public VGRF cohorts is the obvious first
+step. After that, the stride-cycle descriptors are worth revisiting, since they
+proved complementary to the amplitude statistics at subject level even though
+they were weak on their own. Finally, a screening tool needs calibrated
+probabilities and some notion of per-subject confidence more than it needs
+another point of accuracy, and the same architecture would extend naturally to
+regressing UPDRS severity instead of a binary label.

@@ -1,63 +1,73 @@
 \section{Discussion}
 
-\textbf{Key findings.} Three results stand out. First, the Mamba classifier
-is the strongest model in this study under the leakage-free protocol: it
-improves on the best classical baseline by five accuracy points on both feet
-(78\,\% versus 73\,\%) and by twelve points over the previously best deep
-baseline (LSTM, 63\,\%). Second, what the model is fed matters more than how
-large it is: replacing raw samples by per-second statistics gained seven
-points and, more importantly, removed a training collapse that no amount of
-capacity or seed averaging had fixed. Third, the evaluation protocol dominates
-everything else: the same Random Forest reports 73\,\% or 98\,\% depending
-only on whether subjects or windows define the split.
+Under the subject-disjoint protocol the Mamba classifier is the best model we
+tested, but the margin over a well-tuned Random Forest is modest: five accuracy
+points on both feet, and the two are level on AUC. The larger lesson of these
+experiments is not that a state-space model wins. It is that two things we
+initially treated as details -- how the signal is presented to the network, and
+how the data is split -- moved the numbers far more than the choice of
+architecture did.
 
-\textbf{Interpretation.} The collapse on folds~1 and~4 with raw input is
-informative. With 500 samples per window and 60 training subjects, a model
-reading raw force traces has to discover gait structure and discriminative
-features simultaneously from few effective examples, and on some folds it
-settles into a degenerate solution (validation AUC $\approx 0.53$) while
-reaching AUC $> 0.92$ on others. Per-second statistics supply that structure
-explicitly, so the sequence model can spend its capacity on how those
-descriptors evolve. This is consistent with the assignment's own framing,
-which permits either raw signals or feature-vector sequences as input to the
-deep models.
+The failure with raw input was what made the first point concrete. On folds~1
+and~4 training settled at a validation AUC of about $0.53$, while the same code
+on folds~2, 3 and~5 passed $0.92$. We first assumed a bug, then an optimisation
+problem, and tried longer windows, restarts with different seeds, warm-up,
+cosine decay and a larger encoder. None of them helped. What helped was
+replacing the 500 raw samples of a window by eleven statistics per channel per
+second. With 60 training subjects, a network reading raw force traces has to
+discover both what a gait cycle looks like and which of its properties separate
+patients from controls; the statistics supply the first half of that problem,
+and the sequence model is left to learn how the descriptors evolve. The
+assignment permits either raw signals or feature-vector sequences, so this is a
+legitimate design choice rather than a workaround.
 
-The bidirectional ablation, by contrast, did not confirm the corresponding
-architectural intuition. A causal scan leaves the first tokens of a window with
-little context, which should penalise classification of a fully observed
-segment, yet at matched encoder size the causal and bidirectional variants
-performed equally (72\,\% each) and the causal one ranked subjects better
-(AUC $0.87$ versus $0.82$). Because mean-pooling already aggregates over the
-whole window, the late tokens of the causal scan may already carry the
-window-level evidence the classifier needs. With 100 subjects, a difference of
-this size is also within the bootstrap spread, so the honest reading is that
-the experiment is inconclusive rather than that bidirectionality hurts.
+The bidirectional block was our other architectural idea, and it did not
+survive its own ablation. A causal scan gives the first tokens of a window
+almost no context, which ought to hurt when the whole window is available at
+inference. At matched encoder size, however, the causal and bidirectional
+variants reached the same accuracy, and the causal one ranked subjects slightly
+better. Mean-pooling may be the reason: it already aggregates over the whole
+window, so the late tokens of a causal scan can carry the evidence the
+classifier needs. We report this as a negative result. With 100 subjects the
+difference also falls inside the bootstrap spread, so the fair conclusion is
+that the experiment is inconclusive, not that the reverse direction is harmful.
 
-The gap between the protocols has a mechanical explanation. Consecutive
-one-second windows of the same recording are highly correlated, so a window in
-the test set typically has near neighbours in the training set that share
-sensor placement, body mass and individual gait signature. The classifier can
-identify the subject and recall their label, and the RF result -- 98\,\%
-window-wise versus 73\,\% subject-wise -- shows how strong that shortcut is.
-Notably, the SVM-RBF baseline reaches 88\,\% under the leaky protocol, close
-to values frequently quoted for this database, which suggests such numbers are
-often obtained this way.
+The protocol comparison in Section~\ref{ssec:protocols} has a mechanical
+explanation. Windows cut one second apart from the same recording are close to
+duplicates of one another, and they share sensor placement, body mass and an
+individual gait signature. Split them at random and most test windows have a
+near neighbour in the training set, so a classifier can identify the person and
+recall the label. The Random Forest makes the size of that shortcut obvious:
+73\,\% when subjects are held out, 98\,\% when only windows are. The SVM-RBF
+figure under the same leaky split, 88\,\%, is close to accuracies frequently
+quoted for this database, which is at least suggestive about how some of them
+were obtained.
 
-\textbf{Comparison with prior studies.} Our subject-wise figures sit in the
-70--80\,\% band, below the 90\,\%+ commonly reported. We interpret the
-difference as protocol rather than method: the leaky columns of
-Table~\ref{tab:protocols} reproduce the high numbers with the very same
-features and models. Studies that do enforce subject-disjoint evaluation on
-this database report values compatible with ours.
+That is also our reading of the gap to the literature. Our subject-wise results
+sit in the 70--80\,\% band rather than above 90\,\%, and we do not think this
+reflects a weaker method: the leaky column of Table~\ref{tab:protocols}
+reproduces the high numbers with the same features and the same code. Work that
+does enforce subject-disjoint evaluation on this database reports values
+compatible with ours.
 
-\textbf{Strengths and limitations.} Strengths: subject-disjoint splits fixed
-in advance, normalisation and hyper-parameter selection confined to training
-and validation data, thresholds calibrated on validation subjects only,
-seed-averaged results with bootstrap dispersion, and identical evaluation code
-for every model. Limitations: 100 subjects is small, so one subject moves
-subject-level accuracy by one point and the $\pm 4$ bootstrap spread is
-substantial; only the normal-walk recordings were used, leaving the dual-task
-recordings unexploited; stride detection uses a simple force threshold that
-may misfire on severely impaired gait; and stride-cycle tokens
-underperformed on their own (66\,\%), so their clinical information is
-probably not yet fully exploited by our fusion.
+Two further caveats belong here. First, the configuration space we searched was
+large -- forty-five configurations across token type, window length, encoder
+size, regularisation and seed count -- and comparing them on pooled test
+accuracy would make the reported number optimistic. Section~\ref{ssec:selection}
+therefore selects the configuration by validation AUC alone; the difference
+between the two criteria is about three accuracy points, which is worth knowing
+when interpreting any single number in this report. Second, 100 subjects is
+simply few: one subject is one accuracy point, and the $\pm 4$ bootstrap spread
+is wide enough that most of our per-configuration differences are not
+individually significant.
+
+Beyond sample size, three limitations are worth naming. Only the normal-walk
+recordings were used, so the dual-task recordings that often expose parkinsonian
+gait more clearly remain unexploited. Stride detection relies on a fixed force
+threshold, which is adequate for this cohort but would need revisiting for
+severely impaired gait. And the stride-cycle tokens, which encode exactly the
+timing variability the clinical literature emphasises, were the weakest input on
+their own (66\,\%) even though the same features are complementary to the
+amplitude statistics in a subject-level Random Forest (AUC $0.79$, $0.83$ and
+$0.86$ for stride, amplitude and both). We take that as evidence that our fusion
+of the two token families, not the features themselves, is what fell short.

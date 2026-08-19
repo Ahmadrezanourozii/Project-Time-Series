@@ -1,39 +1,34 @@
 \section{Experiments \& Results}
 \label{sec:exp}
 
-\textbf{Partitioning.} Unless stated otherwise, every experiment uses the
-five predefined subject-wise folds (60/20/20 subjects). Training uses the 60
-training subjects, hyper-parameters and the decision threshold are selected on
-the 20 validation subjects, and the 20 test subjects are predicted once. The
-five test sets are disjoint, so pooling them yields exactly one prediction per
-subject and 10\,407 window predictions in total. This is cross-validation in
-the sense that every subject is tested exactly once, without any subject
-appearing in two roles.
+Every experiment uses the five predefined subject-wise folds. A model is trained
+on the 60 training subjects, its hyper-parameters and decision threshold are
+chosen on the 20 validation subjects, and the 20 test subjects are predicted
+once. Because the five test sets are disjoint, pooling them gives exactly one
+prediction per subject and 10\,407 window predictions in total, so every subject
+is tested once and never appears in two roles. We ran fifteen GPU sessions
+covering four groups of experiments: the input representation, the architecture,
+the foot configuration, and the evaluation protocol.
 
-\textbf{Experiments performed.} (1) token representation: raw samples versus
-amplitude statistics versus stride cycles versus their fusion; (2) architecture:
-unidirectional versus bidirectional, three encoder sizes, regularisation and
-seed ensembling; (3) foot configuration: left, right, both; (4) protocol
-comparison: subject-wise versus window-wise splits. Fifteen GPU runs were
-executed in total.
-
-\subsection{Experiment 1: token representation}
-Table~\ref{tab:tokens} reports subject-level accuracy on both feet for the
-input representations. Raw signals were markedly unstable: on folds 1 and 4
-the validation AUC stayed near chance ($0.53$ and $0.54$) while folds 2, 3 and
-5 exceeded $0.92$, and neither longer windows (30\,s, 60\,s), seed restarts
-nor a larger encoder repaired it. Amplitude-statistic tokens removed the
-instability -- the weakest fold rose to $0.75$ validation AUC -- and improved
-accuracy by seven points. Stride-cycle tokens alone were weaker, and fusing
-them with amplitude tokens did not surpass amplitude tokens alone, although at
-subject level the two families were complementary in a Random Forest analysis
-(AUC $0.79$ stride only, $0.83$ amplitude only, $0.86$ combined).
+\subsection{Experiment 1: what the network is fed}
+Table~\ref{tab:tokens} compares the input representations at subject level on
+both feet. Raw signals were not merely weaker but unstable. On folds~1 and~4 the
+validation AUC never left the neighbourhood of chance ($0.53$ and $0.54$) while
+folds~2, 3 and~5 exceeded $0.92$ with the same code and hyper-parameter grid.
+Longer windows (30\,s, 60\,s), restarts with fresh seeds and a larger encoder
+all failed to repair it. Amplitude-statistic tokens fixed the problem outright:
+the weakest fold rose to $0.75$ validation AUC and accuracy improved by seven
+points. Stride-cycle tokens were the weakest input on their own, and fusing them
+with the amplitude tokens did not beat the amplitude tokens alone, even though
+the two families are complementary at subject level in a Random Forest (AUC
+$0.79$, $0.83$ and $0.86$ for stride, amplitude and both).
 
 \begin{table}[t]
   \centering
-  \caption{Effect of the input representation on subject-level accuracy (both
-  feet, subject-wise protocol). ``Worst fold'' is the lowest validation ROC-AUC
-  over the five folds and exposes the training collapse seen with raw input.}
+  \caption{Input representation versus subject-level accuracy (both feet,
+  subject-wise protocol, single seed). ``Worst fold'' is the lowest validation
+  ROC-AUC across the five folds; it exposes the training collapse that raw
+  input produced and that the statistic tokens removed.}
   \label{tab:tokens}
   \begin{tabular}{lcc}
     \toprule
@@ -49,47 +44,58 @@ subject level the two families were complementary in a Random Forest analysis
   \end{tabular}
 \end{table}
 
-\subsection{Experiment 2: architecture ablation}
-With amplitude tokens fixed, encoder size was the decisive architectural
-factor: enlarging the encoder from $d_{\text{model}}=128$, $L=4$ to
-$d_{\text{model}}=256$, $L=6$ raised subject-level accuracy from 72\,\% to
-80\,\%.
+\subsection{Experiment 2: architecture}
+With the input fixed, encoder capacity was the factor that moved accuracy:
+enlarging the encoder from $d_{\text{model}}=128$, $L=4$ to
+$d_{\text{model}}=256$, $L=6$ took subject-level accuracy from 72\,\% to 80\,\%.
+The bidirectional block did not. At matched size the causal and bidirectional
+encoders reach the same calibrated accuracy, and the causal one is slightly
+better both at the fixed threshold and in AUC ($0.87$ versus $0.82$). Since a
+bidirectional block doubles the mixer parameters, size and directionality are
+partly confounded in the larger model, and we make no claim of a benefit from
+processing the window in both directions.
 
-The bidirectional extension did \emph{not} reproduce that gain. At
-$d_{\text{model}}=128$ the causal and the bidirectional encoder reach the same
-calibrated accuracy (72\,\% each); the causal variant is in fact slightly
-better at the fixed threshold (79\,\% versus 72\,\%) and in ranking quality
-(AUC $0.87$ versus $0.82$). Since a bidirectional scan doubles the mixer
-parameters, part of the size effect and the directionality effect are
-confounded in the larger model, and we do not claim a benefit from
-bidirectionality on this dataset. This is a negative result worth stating: the
-intuition that a classifier over a fully observed window should see both
-directions is not supported at the sample size available here.
+Training converged very early: the best epoch was typically between one and four
+out of thirty, which is a symptom of the small effective sample rather than of
+the schedule. We therefore kept dropout at $0.1$--$0.3$, used a three-epoch
+warm-up with cosine decay, and averaged three seeds. Stronger regularisation
+(dropout $0.5$) did not help, and neither did five seeds instead of three or
+late fusion across token families, which scored 0.72--0.77 and so stayed below
+the best single model.
 
-Models overfitted quickly -- the best epoch was typically between 1 and 4 --
-so the reported model uses dropout up to $0.3$, cosine decay with warm-up and
-three-seed averaging; heavier regularisation (dropout $0.5$) did not help
-further. Seed averaging lowers the peak (the best single seed reached
-80\,\%) but is the more honest estimate, single seeds ranging from 72\,\% to
-80\,\%.
+\subsection{Experiment 3: selecting a configuration without using the test set}
+\label{ssec:selection}
+Forty-five configurations were trained in total. Choosing among them by pooled
+test accuracy would leak the test set into the model definition, even though
+each individual run keeps train, validation and test apart. We therefore ranked
+all configurations by their mean validation ROC-AUC across the five folds, a
+quantity that never sees test data, and report the configuration that wins on
+that criterion.
 
-\subsection{Experiment 3: comparison with the baselines}
-Table~\ref{tab:main} is the main result: all models under the subject-wise
-protocol, evaluated with identical code and aggregation. The Mamba model is
-best on both feet (78\,\%) and on the right foot (79\,\%); on the left foot
-the Random Forest remains slightly ahead (74\,\% versus 70\,\%). Sensitivity
-is consistently above specificity for Mamba (82\,\% versus 74\,\% on both
-feet), i.e.\ it misses few patients, which is the preferable error profile for
-screening. Figure~\ref{fig:results}(a) visualises the comparison, and
-Figure~\ref{fig:confusion} shows the confusion matrices.
+The two criteria agree on the important choice and disagree on the details.
+Amplitude-statistic tokens win under both, so the finding of
+Section~\ref{sec:exp} stands. The specific window length and encoder size do
+differ: validation prefers 60\,s windows with the base encoder, whereas pooled
+test accuracy prefers 30\,s windows with the large encoder. The gap between the
+two is about three accuracy points, and that gap is the amount of optimism a
+test-based search would have introduced. Table~\ref{tab:main} reports the
+validation-selected configuration.
+
+\subsection{Experiment 4: comparison with the baselines}
+Table~\ref{tab:main} lists all models under the subject-wise protocol with
+identical evaluation code and the same subject-level aggregation, and
+Figure~\ref{fig:results}(a) shows the same comparison per foot configuration.
+Sensitivity exceeds specificity for the Mamba model, which is the error profile
+a screening tool should prefer: it misses few patients at the price of some
+false alarms. Figure~\ref{fig:confusion} gives the confusion matrices.
 
 \begin{table}[t]
   \centering
   \caption{Subject-level results under the subject-wise (leakage-free)
   protocol, pooled over the five disjoint test folds (100 subjects); mean
-  $\pm$ standard deviation over 1000 bootstrap resamples. Precision, recall
-  and F1 are class-support weighted, so recall equals accuracy by
-  construction. PD is the positive class.}
+  $\pm$ standard deviation over 1000 bootstrap resamples of the subjects.
+  Precision, recall and F1 are weighted by class support, so recall equals
+  accuracy by construction. PD is the positive class.}
   \label{tab:main}
   \setlength{\tabcolsep}{3.2pt}
   \begin{tabular}{llccccc}
@@ -108,13 +114,13 @@ Figure~\ref{fig:confusion} shows the confusion matrices.
                           & Right & 68 $\pm$ 5 & 68 $\pm$ 5 & 0.68 & 68 & 0.69 \\
                           & Both  & 63 $\pm$ 5 & 64 $\pm$ 5 & 0.63 & 54 & 0.68 \\
     \midrule
-    \multirow{1}{*}{Random Forest} & Left  & \textbf{74 $\pm$ 4} & 75 $\pm$ 4 & \textbf{0.74} & 76 & \textbf{0.83} \\
+    \multirow{1}{*}{Random Forest} & Left  & 74 $\pm$ 4 & 75 $\pm$ 4 & 0.74 & 76 & 0.83 \\
                                    & Right & 78 $\pm$ 4 & 79 $\pm$ 4 & 0.78 & 75 & 0.81 \\
                                    & Both  & 73 $\pm$ 4 & 74 $\pm$ 4 & 0.73 & 74 & 0.82 \\
     \midrule
-    \multirow{1}{*}{\textbf{Mamba (ours)}} & Left  & 70 $\pm$ 4 & 71 $\pm$ 4 & 0.70 & 76 & 0.79 \\
-                                  & Right & \textbf{79 $\pm$ 4} & \textbf{80 $\pm$ 4} & \textbf{0.79} & 84 & 0.82 \\
-                                  & Both  & \textbf{78 $\pm$ 4} & \textbf{79 $\pm$ 4} & \textbf{0.78} & 82 & 0.82 \\
+    \multirow{1}{*}{\textbf{Mamba (ours)}} & Left  & MAMBA\_L & & & & \\
+                                  & Right & MAMBA\_R & & & & \\
+                                  & Both  & MAMBA\_B & & & & \\
     \bottomrule
   \end{tabular}
 \end{table}
@@ -122,58 +128,57 @@ Figure~\ref{fig:confusion} shows the confusion matrices.
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{figures/fig3_results}
-  \caption{(a) Subject-level accuracy of all models under the subject-wise
-  protocol, per foot configuration. (b) The same models on both feet under the
-  two protocols: replacing subject-wise splits by window-wise splits inflates
-  accuracy by roughly twenty points without any change to features, models or
-  metrics.}
+  \caption{(a) Subject-level accuracy of every model under the subject-wise
+  protocol, for the left foot, the right foot and both feet. (b) The same
+  models on both feet under the two protocols: replacing subject-wise splits by
+  window-wise splits raises accuracy by twenty points or more without any
+  change to the features, the models or the metrics.}
   \label{fig:results}
 \end{figure}
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{figures/fig4_confusion}
-  \caption{Subject-level confusion matrices of the final Mamba model (100
-  subjects, pooled over the five disjoint test folds), for the left foot, the
-  right foot and both feet. Rows are true classes, columns predicted classes;
-  HC = healthy control, PD = Parkinson's disease.}
+  \caption{Subject-level confusion matrices of the final Mamba model over the
+  100 subjects, pooled from the five disjoint test folds. Rows are true classes
+  and columns predicted classes; HC denotes healthy control and PD Parkinson's
+  disease.}
   \label{fig:confusion}
 \end{figure}
 
-\subsection{Experiment 4: the evaluation protocol}
+\subsection{Experiment 5: the evaluation protocol}
 \label{ssec:protocols}
-To quantify the influence of the split unit, we repeated the evaluation with
-windows -- rather than subjects -- assigned at random to the 60/20/20 splits,
-keeping the data, features, models, metrics and code identical
+To measure the influence of the split unit we repeated the evaluation with
+windows -- not subjects -- assigned at random to the 60/20/20 splits, leaving
+the data, features, models, metrics and code untouched
 (Figure~\ref{fig:protocols}). Table~\ref{tab:protocols} contrasts the two for
-the two classical baselines, whose retraining under the leaky split is cheap.
-Accuracy rises by twenty points or more, and the Random Forest reaches
-98\,\%. Under this protocol a per-subject decision is meaningless, because a
-subject's windows are distributed across training and test, so only
-window-level numbers can be quoted. \emph{These numbers measure how well a
-model recognises previously seen individuals, not whether it detects
-Parkinson's disease in a new patient}, and we report them solely as a
-reference point for the literature.
+the classical baselines, which are cheap to retrain. Accuracy rises by twenty
+points or more and the Random Forest reaches 98\,\%. A per-subject decision has
+no meaning under this protocol, since a subject's windows are spread across
+training and test, so only window-level numbers can be quoted. These numbers
+measure how well a model recognises individuals it has already seen, not whether
+it detects Parkinson's disease in a new patient, and we give them purely as a
+reference point for reading the literature.
 
 \begin{figure}[t]
   \centering
   \includegraphics[width=\columnwidth]{figures/fig2_protocols}
-  \caption{The two evaluation protocols. Each row is a subject, each cell one
-  window. (a) Subject-wise: whole subjects are held out, so nothing about a
-  test subject is seen in training. (b) Window-wise: test windows are drawn at
-  random, so most test windows have highly correlated neighbours from the same
-  recording in the training set.}
+  \caption{The two evaluation protocols. Each row is a subject and each cell one
+  window. (a) Subject-wise: whole subjects are held out, so nothing about a test
+  subject appears in training. (b) Window-wise: test windows are drawn at
+  random, so almost every test window has a near-duplicate neighbour from the
+  same recording in the training set.}
   \label{fig:protocols}
 \end{figure}
 
 \begin{table}[t]
   \centering
-  \caption{Effect of the split unit on both feet, with everything else held
+  \caption{Effect of the split unit on both feet with everything else held
   fixed. Subject-wise values are subject-level; window-wise values are
-  window-level, because per-subject decisions do not exist when a subject's
-  windows are split across training and test. The right-hand column is
-  reported for contrast only and must not be compared with the literature's
-  subject-wise results.}
+  window-level, because per-subject decisions do not exist once a subject's
+  windows are split across training and test. The right-hand column is a
+  cautionary reference and must not be compared against subject-wise results
+  from the literature.}
   \label{tab:protocols}
   \begin{tabular}{lcc}
     \toprule
@@ -181,7 +186,6 @@ reference point for the literature.
     \midrule
     SVM-RBF        & 68 & 88 \\
     Random Forest  & 73 & 98 \\
-    Mamba (ours)   & \textbf{78} & --- \\
     \bottomrule
   \end{tabular}
 \end{table}

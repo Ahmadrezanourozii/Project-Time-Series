@@ -2,54 +2,48 @@
 \label{sec:intro}
 
 Parkinson's disease (PD) is the second most common neurodegenerative disorder,
-and gait disturbance is among its earliest and most characteristic motor
-signs. Clinical rating scales such as the UPDRS depend on expert observation
-and are coarsely quantised, which motivates objective, sensor-based measures.
-Instrumented insoles record the vertical ground reaction force (VGRF) under
-each foot at high rate and low cost, and the resulting multivariate time
-series carries the stride-timing irregularity, reduced swing time and
-left--right asymmetry that characterise parkinsonian gait \cite{hausdorff2007,
-frenkel2005treadmill}.
+and disturbed gait is one of its earliest and most visible motor signs. Clinical
+scales such as the UPDRS rely on expert observation and are coarsely quantised,
+which is why sensor-based measures are attractive. Instrumented insoles record
+the vertical ground reaction force (VGRF) under each foot cheaply and at high
+rate, and the resulting multivariate series carries the stride-timing
+irregularity, shortened swing phase and left--right asymmetry that characterise
+parkinsonian gait \cite{hausdorff2007, frenkel2005treadmill}.
 
-The methodological question this report addresses is not only \emph{which}
-model classifies these signals best, but \emph{how a reported accuracy should
-be read}. Published accuracies on the PhysioNet gait database span roughly
-70--99\,\%, a spread far larger than the differences between the model
-families involved. A large part of that spread comes from how recordings are
-split: when a recording is cut into windows and those windows are then divided
-at random, windows of the same subject appear in both training and test data.
-A classifier can then recognise the individual rather than the disease --- a
-textbook instance of data leakage \cite{kaufman2012leakage}, and one of the
-methodological failure modes repeatedly documented in medical machine learning
-\cite{varoquaux2022machine}. Our experiments make that effect explicit and
-quantify it on identical data.
+Accuracies published on the PhysioNet gait database span roughly 70--99\,\%.
+That spread is much wider than the differences one would expect between the
+model families involved, which suggests something other than the model is
+driving it. A recording of two minutes yields more than a hundred overlapping
+windows, and if those windows are divided at random then windows of one subject
+end up in both the training and the test set. A classifier can then succeed by
+recognising the individual instead of the disease -- a textbook case of leakage
+\cite{kaufman2012leakage}, and one of the failure modes repeatedly documented in
+medical machine learning \cite{varoquaux2022machine}. This report therefore asks
+two questions at once: how well a state-space model classifies these signals,
+and how much of any reported accuracy is an artefact of the split.
 
 \subsection{Related work}
 \label{ssec:sota}
-Classical pipelines on this database combine hand-crafted statistics of the
-VGRF channels with Random Forests or kernel SVMs. Deep models -- 1D-ResNets
-\cite{he2016resnet}, recurrent networks and, more recently, transformers --
-operate on the raw signal or on sequences of feature vectors. Structured
-state-space models (S4 \cite{gu2022s4}, and subsequently Mamba
-\cite{gu2023mamba}) achieve transformer-level
-sequence modelling at linear cost in sequence length by making the state
-transition input-dependent (selective scan), which makes them attractive for
-long physiological recordings. Mamba has been applied to speech, EEG and ECG,
-but to our knowledge not yet to VGRF-based PD classification under a
-subject-disjoint protocol.
+Classical pipelines on this database pair hand-crafted statistics of the VGRF
+channels with Random Forests or kernel SVMs. Deep models -- 1D-ResNets
+\cite{he2016resnet}, recurrent networks and more recently transformers -- take
+either the raw signal or sequences of feature vectors. Structured state-space
+models are a newer alternative: S4 \cite{gu2022s4} and then Mamba
+\cite{gu2023mamba} reach transformer-level sequence modelling at linear rather
+than quadratic cost in sequence length, because Mamba makes the state transition
+depend on the input instead of being fixed. The architecture has been applied to
+speech, EEG and ECG; we are not aware of a VGRF-based PD study that uses it
+under a subject-disjoint protocol.
 
 \subsection{Contributions of this work}
 \label{ssec:contr}
-\begin{itemize}
-  \item A Mamba classifier for VGRF gait signals that outperforms the Random
-        Forest, SVM-RBF, 1D-ResNet and LSTM baselines under a subject-disjoint
-        protocol, together with an ablation of encoder size and of the
-        bidirectional extension of the otherwise causal state-space scan.
-  \item A token design study. Feeding the raw 100\,Hz signal makes training
-        collapse on two of five folds; representing each second by its
-        channel statistics removes the collapse and raises subject-level
-        accuracy from 69\,\% to 76\,\% at matched settings.
-  \item A quantified comparison of the subject-wise and window-wise
-        evaluation protocols on the same data, model and metrics, showing an
-        inflation of about twenty accuracy points from leakage alone.
-\end{itemize}
+We train a Mamba classifier on this dataset and compare it with the Random
+Forest, SVM-RBF, 1D-ResNet and LSTM baselines from the previous stage of the
+project, evaluating every model with the same code and the same subject-disjoint
+folds. Two findings came out of the experiments rather than out of the plan. The
+input representation mattered more than the architecture: feeding raw samples
+made training collapse on two of five folds, and describing each second by its
+channel statistics both removed the collapse and improved accuracy. And the
+split unit mattered more than either: re-running the identical pipeline with
+window-wise splits raises Random Forest accuracy from 73\,\% to 98\,\%, which we
+report as a caution rather than as a result.
