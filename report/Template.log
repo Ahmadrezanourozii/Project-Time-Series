@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.8.19)  19 AUG 2026 18:23
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.8.19)  19 AUG 2026 19:18
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -274,15 +274,16 @@ Underfull \hbox (badness 2245) in paragraph at lines 16--16
  []
 
 (./Sections/01_Introduction.tex
-LaTeX Font Info:    Trying to load font information for TS1+ptm on input line 44.
- (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/psnfss/ts1ptm.fd
-File: ts1ptm.fd 2001/06/04 font definitions for TS1/ptm.
-)) (./Sections/02_Materials_and_Methods.tex
-<figures/fig1_pipeline.pdf, id=96, 443.05524pt x 111.83783pt>
+Underfull \hbox (badness 1028) in paragraph at lines 13--24
+[]\OT1/ptm/m/n/9 Accuracies pub-lished on the Phy-s-ioNet gait database span
+ []
+
+) (./Sections/02_Materials_and_Methods.tex
+<figures/fig1_pipeline.pdf, id=100, 394.95557pt x 93.0404pt>
 File: figures/fig1_pipeline.pdf Graphic file (type pdf)
 <use figures/fig1_pipeline.pdf>
 Package pdftex.def Info: figures/fig1_pipeline.pdf  used on input line 9.
-(pdftex.def)             Requested size: 506.45905pt x 127.84796pt.
+(pdftex.def)             Requested size: 506.45905pt x 119.31136pt.
  [1{/Users/ahmadrezanourozi/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
@@ -302,33 +303,30 @@ Underfull \hbox (badness 1102) in paragraph at lines 56--62
  []
 
 
-Underfull \vbox (badness 5681) has occurred while \output is active []
+Underfull \vbox (badness 2717) has occurred while \output is active []
 
  [2 <./figures/fig1_pipeline.pdf>]) (./Sections/03_Experiments_and_Results.tex
-Overfull \hbox (1.05829pt too wide) in paragraph at lines 38--50
+Overfull \hbox (1.05829pt too wide) in paragraph at lines 35--47
  [][] 
  []
 
-<figures/fig3_results.pdf, id=214, 499.1542pt x 173.25377pt>
+[3]
+<figures/fig3_results.pdf, id=160, 486.0361pt x 131.5443pt>
 File: figures/fig3_results.pdf Graphic file (type pdf)
 <use figures/fig3_results.pdf>
-Package pdftex.def Info: figures/fig3_results.pdf  used on input line 124.
-(pdftex.def)             Requested size: 244.6937pt x 84.93208pt.
-<figures/fig4_confusion.pdf, id=215, 491.54555pt x 176.91875pt>
+Package pdftex.def Info: figures/fig3_results.pdf  used on input line 143.
+(pdftex.def)             Requested size: 244.6937pt x 66.2256pt.
+<figures/fig4_confusion.pdf, id=161, 450.9745pt x 133.56061pt>
 File: figures/fig4_confusion.pdf Graphic file (type pdf)
 <use figures/fig4_confusion.pdf>
-Package pdftex.def Info: figures/fig4_confusion.pdf  used on input line 135.
-(pdftex.def)             Requested size: 244.6937pt x 88.0731pt.
-[3 <./figures/fig3_results.pdf>]
-<figures/fig2_protocols.pdf, id=315, 498.25963pt x 158.86351pt>
+Package pdftex.def Info: figures/fig4_confusion.pdf  used on input line 154.
+(pdftex.def)             Requested size: 244.6937pt x 72.4681pt.
+<figures/fig2_protocols.pdf, id=164, 486.92339pt x 140.53044pt>
 File: figures/fig2_protocols.pdf Graphic file (type pdf)
 <use figures/fig2_protocols.pdf>
-Package pdftex.def Info: figures/fig2_protocols.pdf  used on input line 160.
-(pdftex.def)             Requested size: 244.6937pt x 78.01833pt.
-) (./Sections/04_Discussion.tex [4 <./figures/fig4_confusion.pdf> <./figures/fig2_protocols.pdf>]) (./Sections/05_Conclusions.tex) (./Template.bbl
-Underfull \vbox (badness 6332) has occurred while \output is active []
-
-
+Package pdftex.def Info: figures/fig2_protocols.pdf  used on input line 178.
+(pdftex.def)             Requested size: 244.6937pt x 70.61885pt.
+) (./Sections/04_Discussion.tex [4 <./figures/fig3_results.pdf> <./figures/fig4_confusion.pdf> <./figures/fig2_protocols.pdf>]) (./Sections/05_Conclusions.tex) (./Template.bbl
 Underfull \hbox (badness 3930) in paragraph at lines 34--37
 \OT1/ptm/m/n/9 mod-el-ing with se-lec-tive state spaces,''  \OT1/ptm/m/it/9 arXiv preprint
  []
@@ -339,21 +337,21 @@ LaTeX2e <2026-06-01>
 L3 programming layer <2026-08-10>
  ***********
 Package rerunfilecheck Info: File `Template.out' has not changed.
-(rerunfilecheck)             Checksum: CA6D3A1F6F88308384810E52F0B9B82A;3734.
+(rerunfilecheck)             Checksum: 3CE3A88FA4123780079202948C43FBE4;4133.
  ) 
 Here is how much of TeX's memory you used:
- 9316 strings out of 469089
- 147838 string characters out of 5458302
- 583321 words of memory out of 5000000
- 38215 multiletter control sequences out of 15000+600000
- 650611 words of font info for 82 fonts, out of 8000000 for 9000
+ 9291 strings out of 469089
+ 147395 string characters out of 5458302
+ 583630 words of memory out of 5000000
+ 38193 multiletter control sequences out of 15000+600000
+ 650297 words of font info for 81 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 74i,11n,79p,668b,476s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 74i,11n,79p,668b,474s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on Template.pdf (5 pages, 225464 bytes).
+Output written on Template.pdf (5 pages, 347308 bytes).
 PDF statistics:
- 509 PDF objects out of 1000 (max. 8388607)
- 244 compressed objects within 3 object streams
- 42 named destinations out of 1000 (max. 500000)
- 189 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 306 PDF objects out of 1000 (max. 8388607)
+ 237 compressed objects within 3 object streams
+ 43 named destinations out of 1000 (max. 500000)
+ 197 words of extra memory for PDF output out of 10000 (max. 10000000)
 

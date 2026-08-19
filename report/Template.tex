@@ -21,12 +21,13 @@ enormously because evaluation protocols differ. We classify PD versus healthy
 control (HC) from the PhysioNet gait database (100 subjects, 16 force sensors)
 using a Mamba state-space model, and we evaluate it under two protocols on
 identical data. Under a strictly subject-wise protocol, in which all windows of
-a subject stay inside one split, the model reaches $78 \pm 4$\,\% accuracy and
-$0.78$ weighted F1 on both feet and $79 \pm 4$\,\% on the right foot,
-outperforming the Random Forest, SVM-RBF, 1D-ResNet and LSTM baselines. An
-ablation shows the gain comes from describing each second by its channel
-statistics rather than feeding raw samples, which also removes a training
-collapse observed on two folds. Re-evaluating the same features and baselines
+a subject stay inside one split and the configuration is selected on validation
+rather than on test, the model reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted
+F1 and $0.85$ AUC on both feet, slightly ahead of the Random Forest, SVM-RBF,
+1D-ResNet and LSTM baselines. An ablation shows the gain comes from describing
+each second by its channel statistics rather than feeding raw samples, which
+also removes a training collapse observed on two folds, while a bidirectional
+variant of the causal scan changes nothing. Re-evaluating the same features and baselines
 under the window-wise protocol that is common in the literature, where windows
 of one subject appear in training and test, raises Random Forest accuracy from
 $73$\,\% to $98$\,\% and SVM accuracy from $68$\,\% to $88$\,\% -- an

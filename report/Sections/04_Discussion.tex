@@ -1,12 +1,13 @@
 \section{Discussion}
 
-Under the subject-disjoint protocol the Mamba classifier is the best model we
-tested, but the margin over a well-tuned Random Forest is modest: five accuracy
-points on both feet, and the two are level on AUC. The larger lesson of these
-experiments is not that a state-space model wins. It is that two things we
-initially treated as details -- how the signal is presented to the network, and
-how the data is split -- moved the numbers far more than the choice of
-architecture did.
+Under the subject-disjoint protocol the Mamba classifier edges out the
+baselines on both feet -- two accuracy points and $0.03$ AUC over a tuned
+Random Forest -- but it loses on the right foot, and with a $\pm 4$ bootstrap
+spread none of these gaps is individually convincing. We would not present
+this as a demonstration that state-space models are the right tool for gait
+signals. The two effects that did move the numbers unambiguously were not
+architectural at all: how the signal is presented to the network, and how the
+data is split.
 
 The failure with raw input was what made the first point concrete. On folds~1
 and~4 training settled at a validation AUC of about $0.53$, while the same code
@@ -24,13 +25,12 @@ legitimate design choice rather than a workaround.
 The bidirectional block was our other architectural idea, and it did not
 survive its own ablation. A causal scan gives the first tokens of a window
 almost no context, which ought to hurt when the whole window is available at
-inference. At matched encoder size, however, the causal and bidirectional
-variants reached the same accuracy, and the causal one ranked subjects slightly
-better. Mean-pooling may be the reason: it already aggregates over the whole
-window, so the late tokens of a causal scan can carry the evidence the
-classifier needs. We report this as a negative result. With 100 subjects the
-difference also falls inside the bootstrap spread, so the fair conclusion is
-that the experiment is inconclusive, not that the reverse direction is harmful.
+inference. Run at matched size and matched input, the two variants landed on
+the same accuracy and the same AUC to three decimals. Mean-pooling is the
+likely explanation: it already aggregates across the window, so the late
+tokens of a causal scan can carry the evidence the classifier needs, and the
+reverse pass adds parameters without adding information. We report it as a
+negative result rather than a harmful one.
 
 The protocol comparison in Section~\ref{ssec:protocols} has a mechanical
 explanation. Windows cut one second apart from the same recording are close to

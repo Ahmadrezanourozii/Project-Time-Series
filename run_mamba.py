@@ -56,6 +56,18 @@ from mamba_model import HAVE_MAMBA_SSM, MODEL_SIZES, MambaClassifier
 
 FOOT_ORDER = ["left", "right", "both"]
 
+# Token step used when each cache was built (scripts/build_feature_sequences.py).
+# Recorded in the bundle manifest so inference can reproduce the same windows.
+TOKEN_STEPS = {
+    "stat_windows_30s": 10,
+    "stat_windows_60s": 15,
+    "stat_windows_15s_dense": 1,
+    "stat_windows_30s_dense": 2,
+    "stat_windows_60s_dense": 4,
+    "fused_windows_30s": 10,
+    "fused_windows_30s_dense": 2,
+}
+
 
 # ---------------------------------------------------------------------------
 # Data loading
@@ -713,6 +725,10 @@ def main() -> None:
                 {
                     "npz": str(args.npz),
                     "token_kind": Path(args.npz).stem,
+                    # Inference must rebuild windows of exactly this length; a
+                    # Mamba encoder accepts any T, so a mismatch would be silent.
+                    "token_window": int(table.data.shape[2]),
+                    "token_step": TOKEN_STEPS.get(Path(args.npz).stem),
                     "feet": feet,
                     "folds": args.folds,
                     "seeds": args.seeds,

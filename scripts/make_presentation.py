@@ -23,6 +23,7 @@ TEMPLATE = Path("Baseline Models.AhmadrezaNourozi.pptx")
 OUT = Path("Mamba Results.AhmadrezaNourozi.pptx")
 FINAL = Path("outputs/mamba/final")
 FIGS = FINAL / "figures_report_png"
+PRIMARY = FINAL / "primary_model" / "results.json"
 
 DARK_BLUE = RGBColor(0x00, 0x33, 0x66)
 ORANGE = RGBColor(0xFF, 0x99, 0x33)
@@ -119,7 +120,7 @@ def banner(slide, text, y=1.15, color=ORANGE):
 
 
 def main() -> None:
-    mamba = json.loads((FINAL / "primary_amplitude30_3seed" / "results.json").read_text())
+    mamba = json.loads(PRIMARY.read_text())
     base = json.loads((FINAL / "baseline_comparison.json").read_text())
     m = lambda foot, key: mamba["results"][foot]["subject_mean_prob"]["bootstrap"][key]
     b = lambda model, foot, key: base["subject_wise"][model][foot]["subject"]["bootstrap"][key]
@@ -238,15 +239,17 @@ def main() -> None:
     s = add(prs, "Nur Titel | weiß", "Results per foot configuration")
     picture(s, FIGS / "fig3_results.png", 0.6, 1.5, w=11.6)
     textbox(s, 0.75, 6.0, 11.8, 0.9, [
-        "Mamba is best on the right foot (79%) and on both feet (78%); Random Forest keeps a small edge on the left foot (74% vs 70%).",
-    ], size=12, bullet=False)
+        "On both feet Mamba leads by 2 points and 0.03 AUC; the two tie on the left foot and Random Forest wins the right (78% vs 71%).",
+        "One subject is worth one accuracy point and the bootstrap spread is ±4 — no single one of these gaps is convincing on its own.",
+    ], size=11.5, bullet=False)
 
     # 9 — confusion matrices
     s = add(prs, "Nur Titel | weiß", "Confusion matrices — Mamba, subject level")
     picture(s, FIGS / "fig4_confusion.png", 1.4, 1.7, w=10.4)
+    conf = mamba["results"]["both"]["subject_mean_prob"]["confusion"]
     textbox(s, 0.75, 5.6, 11.8, 0.9, [
-        "Both feet: 41 of 50 patients and 37 of 50 controls correct. Sensitivity (82%) exceeds specificity (74%) —",
-        "the model rarely misses a patient, the preferable error profile for screening.",
+        f"Both feet: {conf['tp']} of 50 patients found, {conf['fn']} missed; {conf['fp']} controls flagged.",
+        "86% sensitivity at 64% specificity — for screening, missing a patient costs more than a second look at a healthy subject.",
     ], size=12, bullet=False)
 
     # 10 — the protocol issue
@@ -270,16 +273,16 @@ def main() -> None:
         ["Raw signal, base encoder", "69"],
         ["→ feature-vector tokens (same settings)", "76"],
         ["→ larger encoder (d = 128 → 256)", "80"],
-        ["→ bidirectional scan (matched size)", "no gain"],
-        ["→ 3-seed averaging (final, reported)", "78"],
+        ["→ bidirectional scan (matched size)", "no change"],
+        ["→ config picked on validation, not test", "75"],
     ], col_widths=[5.2, 2.4], highlight_row=5, font_size=12.5)
     textbox(s, 8.6, 1.65, 4.1, 4.3, [
         "Reading the table",
-        "input representation and encoder capacity carried the gain",
-        "bidirectionality: 72% either way at matched size, causal even ranked better (AUC 0.87 vs 0.82) — reported as a negative result",
-        "seed averaging lowers the peak but is the honest number: single seeds ranged 72–80%",
-        "models overfit by epoch 1–4 → warm-up + cosine, dropout ≤ 0.3",
-    ], size=12, bold_first=True)
+        "the input representation carried the gain; capacity helped, direction did not",
+        "bidirectional vs causal at matched size: 77% and AUC 0.852 for both — a negative result",
+        "the last row is the honest one: choosing among 45 configurations by test accuracy costs ~3 points of optimism",
+        "models overfit by epoch 1–4, so warm-up + cosine, dropout ≤ 0.3, 3 seeds",
+    ], size=11.5, bold_first=True)
 
     # 12 — inference on unseen data
     s = add(prs, "Textfolie", "Ready for inference on a new cohort")
@@ -315,12 +318,12 @@ def main() -> None:
     # 14 — conclusion
     s = add(prs, "Textfolie", "Conclusion")
     textbox(s, 0.6, 1.35, 12.1, 4.6, [
-        "Mamba is the strongest model here under leakage-free evaluation: 78% accuracy, 0.78 weighted F1, 0.82 AUC on both feet (79% on the right foot)",
-        "It beats the best classical baseline by 5 points and the best deep baseline by 12",
-        "The gain came from the input representation (feature-vector tokens) and encoder capacity — not from bidirectionality, which showed no benefit at matched size",
-        "The split unit changes the reported accuracy by ~20 points — an accuracy on this database is uninterpretable without it",
-        "Next: more subjects (dual-task recordings, other cohorts), richer gait-cycle descriptors, calibrated per-subject uncertainty, UPDRS severity regression",
-    ], size=15)
+        "Mamba on both feet: 75% accuracy, 0.75 weighted F1, 0.85 AUC — ahead of every baseline, but only just, and Random Forest still wins the right foot",
+        "What moved the numbers was the input representation, not the architecture; raw signals collapsed on two folds, feature tokens fixed it",
+        "The split unit changes accuracy by ~20 points, so an accuracy quoted for this database means nothing until the split unit is stated",
+        "We select the configuration on validation, never on test — it costs 3 points and makes the number an estimate rather than a summary of our search",
+        "Next: more subjects before anything else — every model we tried plateaus in the same band, which points at the cohort, not the method",
+    ], size=14.5)
 
     # 15 — closing
     s = add(prs, "Schlussfolie")

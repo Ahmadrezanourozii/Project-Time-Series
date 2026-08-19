@@ -40,7 +40,13 @@ def main() -> None:
         body = row(block["bootstrap"], block["point"])
         if foot == "both":  # bold the headline row
             body = " & ".join(f"\\textbf{{{c.strip()}}}" for c in body.split("&"))
-        tex = re.sub(rf"{key}\s*&(\s*&)*", body + " ", tex)
+        # re.sub would interpret LaTeX backslashes in the replacement, so substitute by hand
+        # the placeholders are written MAMBA\_L in LaTeX (escaped underscore)
+        pattern = re.compile(re.escape(key.replace("_", "\\_")) + r"\s*&(\s*&)*")
+        match = pattern.search(tex)
+        if not match:
+            raise SystemExit(f"placeholder {key} not found in {TEX}")
+        tex = tex[: match.start()] + body + " " + tex[match.end() :]
     TEX.write_text(tex)
 
     print(f"filled Mamba rows from {src}")

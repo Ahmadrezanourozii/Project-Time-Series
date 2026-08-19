@@ -2,12 +2,13 @@
 
 We classified Parkinson's disease from vertical ground reaction force recordings
 with a Mamba state-space model, evaluated on five predefined subject-disjoint
-folds. The model reaches the accuracy reported in Table~\ref{tab:main} at
-subject level and outperforms the Random Forest, SVM-RBF, 1D-ResNet and LSTM
-baselines that were evaluated with identical code. The improvement came from the
-input representation and from encoder capacity; the bidirectional extension of
-the causal scan, which we expected to help, made no measurable difference at
-matched size.
+folds. On both feet it reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted F1 and
+$0.85$ AUC at subject level, marginally ahead of the Random Forest, SVM-RBF,
+1D-ResNet and LSTM baselines run through the same evaluation code, though the
+Random Forest remains better on the right foot alone. What produced the result
+was the input representation rather than the architecture: the bidirectional
+extension of the causal scan, which we expected to help, made no measurable
+difference at matched size.
 
 The methodological result may be the more useful one. Re-running the same
 baselines with a window-wise split raises Random Forest accuracy from 73\,\% to

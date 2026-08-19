@@ -26,9 +26,11 @@ $0.79$, $0.83$ and $0.86$ for stride, amplitude and both).
 \begin{table}[t]
   \centering
   \caption{Input representation versus subject-level accuracy (both feet,
-  subject-wise protocol, single seed). ``Worst fold'' is the lowest validation
-  ROC-AUC across the five folds; it exposes the training collapse that raw
-  input produced and that the statistic tokens removed.}
+  subject-wise protocol). Each row is the best configuration we found for that
+  representation, so the comparison is between representations rather than
+  between tuned models. ``Worst fold'' is the lowest validation ROC-AUC across
+  the five folds and exposes the training collapse that raw input produced and
+  that the statistic tokens removed.}
   \label{tab:tokens}
   \begin{tabular}{lcc}
     \toprule
@@ -47,13 +49,14 @@ $0.79$, $0.83$ and $0.86$ for stride, amplitude and both).
 \subsection{Experiment 2: architecture}
 With the input fixed, encoder capacity was the factor that moved accuracy:
 enlarging the encoder from $d_{\text{model}}=128$, $L=4$ to
-$d_{\text{model}}=256$, $L=6$ took subject-level accuracy from 72\,\% to 80\,\%.
-The bidirectional block did not. At matched size the causal and bidirectional
-encoders reach the same calibrated accuracy, and the causal one is slightly
-better both at the fixed threshold and in AUC ($0.87$ versus $0.82$). Since a
-bidirectional block doubles the mixer parameters, size and directionality are
-partly confounded in the larger model, and we make no claim of a benefit from
-processing the window in both directions.
+$d_{\text{model}}=256$, $L=6$ took subject-level accuracy from 72\,\% to 80\,\%
+on 30\,s windows. The bidirectional block did not. Run at matched size, matched
+input and three seeds each, the causal and bidirectional encoders are
+indistinguishable: 77\,\% accuracy and AUC $0.852$ for both, with the causal
+variant marginally ahead at the fixed threshold ($78$ versus $77$\,\%). We
+therefore make no claim of a benefit from processing the window in both
+directions, and note that in the larger encoder the two factors are confounded
+anyway, since a bidirectional block doubles the mixer parameters.
 
 Training converged very early: the best epoch was typically between one and four
 out of thirty, which is a symptom of the small effective sample rather than of
@@ -84,10 +87,20 @@ validation-selected configuration.
 \subsection{Experiment 4: comparison with the baselines}
 Table~\ref{tab:main} lists all models under the subject-wise protocol with
 identical evaluation code and the same subject-level aggregation, and
-Figure~\ref{fig:results}(a) shows the same comparison per foot configuration.
-Sensitivity exceeds specificity for the Mamba model, which is the error profile
-a screening tool should prefer: it misses few patients at the price of some
-false alarms. Figure~\ref{fig:confusion} gives the confusion matrices.
+Figure~\ref{fig:results}(a) repeats the comparison per foot configuration. On
+both feet the Mamba model is ahead of every baseline, by two accuracy points
+over the Random Forest and by $0.03$ AUC. The margin is not uniform across foot
+configurations: the two models tie on the left foot, and the Random Forest is
+clearly better on the right (78\,\% against 71\,\%). Given that a single subject
+is worth one accuracy point and the bootstrap spread is $\pm 4$, we would not
+read much into any individual one of these gaps.
+
+The error profiles differ in a way that matters more than the averages. Mamba
+reaches 86\,\% sensitivity at 64\,\% specificity, whereas the Random Forest sits
+near 74\,\% on both. For a screening tool the asymmetric profile is preferable:
+of the 50 patients the model misses seven, at the cost of 18 healthy subjects
+flagged for a second look. Figure~\ref{fig:confusion} shows the corresponding
+confusion matrices.
 
 \begin{table}[t]
   \centering
@@ -118,9 +131,9 @@ false alarms. Figure~\ref{fig:confusion} gives the confusion matrices.
                                    & Right & 78 $\pm$ 4 & 79 $\pm$ 4 & 0.78 & 75 & 0.81 \\
                                    & Both  & 73 $\pm$ 4 & 74 $\pm$ 4 & 0.73 & 74 & 0.82 \\
     \midrule
-    \multirow{1}{*}{\textbf{Mamba (ours)}} & Left  & MAMBA\_L & & & & \\
-                                  & Right & MAMBA\_R & & & & \\
-                                  & Both  & MAMBA\_B & & & & \\
+    \multirow{1}{*}{\textbf{Mamba (ours)}} & Left  & 74 $\pm$ 4 & 76 $\pm$ 4 & 0.74 & 84 & 0.82  \\
+                                  & Right & 71 $\pm$ 4 & 72 $\pm$ 4 & 0.71 & 68 & 0.81  \\
+                                  & Both  & \textbf{75 $\pm$ 4} & \textbf{77 $\pm$ 4} & \textbf{0.75} & \textbf{86} & \textbf{0.85}  \\
     \bottomrule
   \end{tabular}
 \end{table}

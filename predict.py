@@ -29,11 +29,9 @@ import torch
 from baseline.config import FOOT_CONFIGS, FS_HZ, RAW_COLUMNS, SKIP_INIT_SEC
 from baseline.features import compute_window_stats, drop_gait_init, window_start_indices
 from dl.datasets import apply_normalizer
-from mamba_model import MambaClassifier
+from mamba_model import HAVE_MAMBA_SSM, MambaClassifier
 
 ALL_CHANNELS = FOOT_CONFIGS["both"]
-STAT_TOKENS_PER_WINDOW = 30  # 30 s windows of 1 s tokens -- matches the trained model
-TOKEN_STEP = 10
 
 
 def per_second_tokens(values: np.ndarray) -> np.ndarray:
@@ -49,19 +47,24 @@ def per_second_tokens(values: np.ndarray) -> np.ndarray:
     return np.asarray(tokens, dtype=np.float32)
 
 
-def windows_from_recording(path: Path, foot: str) -> np.ndarray:
-    """Raw .txt -> (n_windows, C, T) float32, unnormalised."""
+def windows_from_recording(path: Path, foot: str, window: int, step: int) -> np.ndarray:
+    """Raw .txt -> (n_windows, C, T) float32, unnormalised.
+
+    `window` and `step` come from the bundle manifest. They must match the
+    training cache: a Mamba encoder accepts any sequence length, so feeding
+    differently sized windows would produce plausible but wrong scores.
+    """
     df = pd.read_csv(path, sep="\t", header=None, names=RAW_COLUMNS)
     df = drop_gait_init(df, skip_sec=SKIP_INIT_SEC)
     tokens = per_second_tokens(df[ALL_CHANNELS].to_numpy(dtype=np.float32))  # (T_sec, 198)
 
-    starts = window_start_indices(len(tokens), STAT_TOKENS_PER_WINDOW, TOKEN_STEP)
+    starts = window_start_indices(len(tokens), window, step)
     if not starts:
-        padded = np.zeros((STAT_TOKENS_PER_WINDOW, tokens.shape[1]), dtype=np.float32)
+        padded = np.zeros((window, tokens.shape[1]), dtype=np.float32)
         padded[: len(tokens)] = tokens
         windows = padded[None]
     else:
-        windows = np.stack([tokens[s : s + STAT_TOKENS_PER_WINDOW] for s in starts])
+        windows = np.stack([tokens[s : s + window] for s in starts])
     windows = np.transpose(windows, (0, 2, 1))  # (n, 198, T)
 
     wanted = set(FOOT_CONFIGS[foot])
@@ -74,6 +77,14 @@ def load_bundle(bundle_dir: Path, foot: str) -> list[dict]:
     files = sorted(bundle_dir.glob(f"mamba_{foot}_fold*.pt"))
     if not files:
         raise SystemExit(f"No bundle files for foot={foot!r} in {bundle_dir}")
+    if not HAVE_MAMBA_SSM:
+        raise SystemExit(
+            "These weights were trained with the mamba_ssm Mamba2 block, whose parameter "
+            "layout differs from the pure-PyTorch fallback used when mamba_ssm is absent, "
+            "so they cannot be loaded here.\n"
+            "Run inference where the kernels are available (Kaggle T4 notebook, cell 'INFERENCE'), "
+            "or install:  pip install --no-build-isolation causal-conv1d mamba-ssm"
+        )
     return [torch.load(f, map_location="cpu", weights_only=False) for f in files]
 
 
@@ -108,9 +119,19 @@ def main() -> None:
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     bundles = load_bundle(args.bundle, args.foot)
     threshold = args.threshold if args.threshold is not None else float(np.mean([b["threshold"] for b in bundles]))
-    manifest = args.bundle / "manifest.json"
-    if manifest.exists():
-        print("bundle:", json.loads(manifest.read_text()).get("token_kind"), f"({len(bundles)} fold models)")
+
+    manifest_path = args.bundle / "manifest.json"
+    if not manifest_path.exists():
+        raise SystemExit(f"{manifest_path} missing — it carries the window length inference must reproduce")
+    manifest = json.loads(manifest_path.read_text())
+    window, step = manifest.get("token_window"), manifest.get("token_step")
+    if not window or not step:
+        raise SystemExit(
+            f"{manifest_path} has no token_window/token_step. Re-export the bundle with the "
+            "current run_mamba.py; guessing the window length would silently corrupt predictions."
+        )
+    print(f"bundle: {manifest.get('token_kind')} ({len(bundles)} models, "
+          f"{window}-token windows, step {step})")
     print(f"device={device}  foot={args.foot}  threshold={threshold:.3f}")
 
     recordings = sorted(args.input.glob("*.txt"))
@@ -119,7 +140,7 @@ def main() -> None:
 
     rows = []
     for path in recordings:
-        X = windows_from_recording(path, args.foot)
+        X = windows_from_recording(path, args.foot, window, step)
         fold_scores = [score_windows(b, X, device) for b in bundles]  # each (n_windows,)
         window_scores = np.mean(fold_scores, axis=0)
         score = float(window_scores.mean())
