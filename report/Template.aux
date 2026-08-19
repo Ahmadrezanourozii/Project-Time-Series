@@ -3,7 +3,13 @@
 \providecommand\HyField@AuxAddToFields[1]{}
 \providecommand\HyField@AuxAddToCoFields[2]{}
 \citation{hausdorff2007}
+\citation{frenkel2005treadmill}
+\citation{kaufman2012leakage}
+\citation{varoquaux2022machine}
+\citation{he2016resnet}
+\citation{gu2022s4}
 \citation{gu2023mamba}
+\citation{goldberger2000physiobank}
 \@writefile{toc}{\contentsline {section}{\numberline {1} Introduction}{1}{section.1}\protected@file@percent }
 \newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {1.1} Related work}{1}{subsection.1.1}\protected@file@percent }
@@ -24,22 +30,23 @@
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.1} Mamba classifier}{2}{subsubsection.2.2.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.2} Training strategy}{2}{subsubsection.2.2.2}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.3} Decision rule and subject-level aggregation}{2}{subsubsection.2.2.3}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Effect of the input representation on subject-level accuracy (both feet, subject-wise protocol). ``Worst fold'' is the lowest validation ROC-AUC over the five folds and exposes the training collapse seen with raw input.}}{3}{table.1}\protected@file@percent }
-\newlabel{tab:tokens}{{1}{3}{Effect of the input representation on subject-level accuracy (both feet, subject-wise protocol). ``Worst fold'' is the lowest validation ROC-AUC over the five folds and exposes the training collapse seen with raw input}{table.1}{}}
-\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.4} Evaluation metrics}{3}{subsubsection.2.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.4} Deployment on unseen cohorts}{3}{subsubsection.2.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {2.2.5} Evaluation metrics}{3}{subsubsection.2.2.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {3} Experiments \& Results}{3}{section.3}\protected@file@percent }
 \newlabel{sec:exp}{{3}{3}{Experiments \& Results}{section.3}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.1} Experiment 1: token representation}{3}{subsection.3.1}\protected@file@percent }
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.2} Experiment 2: architecture ablation}{3}{subsection.3.2}\protected@file@percent }
-\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Subject-level results under the subject-wise (leakage-free) protocol, pooled over the five disjoint test folds (100 subjects); mean $\pm $ standard deviation over 1000 bootstrap resamples. Precision, recall and F1 are class-support weighted, so recall equals accuracy by construction. PD is the positive class.}}{3}{table.2}\protected@file@percent }
-\newlabel{tab:main}{{2}{3}{Subject-level results under the subject-wise (leakage-free) protocol, pooled over the five disjoint test folds (100 subjects); mean $\pm $ standard deviation over 1000 bootstrap resamples. Precision, recall and F1 are class-support weighted, so recall equals accuracy by construction. PD is the positive class}{table.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Effect of the input representation on subject-level accuracy (both feet, subject-wise protocol). ``Worst fold'' is the lowest validation ROC-AUC over the five folds and exposes the training collapse seen with raw input.}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:tokens}{{1}{3}{Effect of the input representation on subject-level accuracy (both feet, subject-wise protocol). ``Worst fold'' is the lowest validation ROC-AUC over the five folds and exposes the training collapse seen with raw input}{table.1}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces (a) Subject-level accuracy of all models under the subject-wise protocol, per foot configuration. (b) The same models on both feet under the two protocols: replacing subject-wise splits by window-wise splits inflates accuracy by roughly twenty points without any change to features, models or metrics.}}{3}{figure.2}\protected@file@percent }
+\newlabel{fig:results}{{2}{3}{(a) Subject-level accuracy of all models under the subject-wise protocol, per foot configuration. (b) The same models on both feet under the two protocols: replacing subject-wise splits by window-wise splits inflates accuracy by roughly twenty points without any change to features, models or metrics}{figure.2}{}}
 \@writefile{toc}{\contentsline {subsection}{\numberline {3.3} Experiment 3: comparison with the baselines}{3}{subsection.3.3}\protected@file@percent }
-\@writefile{toc}{\contentsline {subsection}{\numberline {3.4} Experiment 4: the evaluation protocol}{3}{subsection.3.4}\protected@file@percent }
-\newlabel{ssec:protocols}{{3.4}{3}{Experiment 4: the evaluation protocol}{subsection.3.4}{}}
-\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces (a) Subject-level accuracy of all models under the subject-wise protocol, per foot configuration. (b) The same models on both feet under the two protocols: replacing subject-wise splits by window-wise splits inflates accuracy by roughly twenty points without any change to features, models or metrics.}}{4}{figure.2}\protected@file@percent }
-\newlabel{fig:results}{{2}{4}{(a) Subject-level accuracy of all models under the subject-wise protocol, per foot configuration. (b) The same models on both feet under the two protocols: replacing subject-wise splits by window-wise splits inflates accuracy by roughly twenty points without any change to features, models or metrics}{figure.2}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Subject-level results under the subject-wise (leakage-free) protocol, pooled over the five disjoint test folds (100 subjects); mean $\pm $ standard deviation over 1000 bootstrap resamples. Precision, recall and F1 are class-support weighted, so recall equals accuracy by construction. PD is the positive class.}}{4}{table.2}\protected@file@percent }
+\newlabel{tab:main}{{2}{4}{Subject-level results under the subject-wise (leakage-free) protocol, pooled over the five disjoint test folds (100 subjects); mean $\pm $ standard deviation over 1000 bootstrap resamples. Precision, recall and F1 are class-support weighted, so recall equals accuracy by construction. PD is the positive class}{table.2}{}}
 \@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Subject-level confusion matrices of the final Mamba model (100 subjects, pooled over the five disjoint test folds), for the left foot, the right foot and both feet. Rows are true classes, columns predicted classes; HC = healthy control, PD = Parkinson's disease.}}{4}{figure.3}\protected@file@percent }
 \newlabel{fig:confusion}{{3}{4}{Subject-level confusion matrices of the final Mamba model (100 subjects, pooled over the five disjoint test folds), for the left foot, the right foot and both feet. Rows are true classes, columns predicted classes; HC = healthy control, PD = Parkinson's disease}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {3.4} Experiment 4: the evaluation protocol}{4}{subsection.3.4}\protected@file@percent }
+\newlabel{ssec:protocols}{{3.4}{4}{Experiment 4: the evaluation protocol}{subsection.3.4}{}}
 \@writefile{toc}{\contentsline {section}{\numberline {4} Discussion}{4}{section.4}\protected@file@percent }
 \@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces The two evaluation protocols. Each row is a subject, each cell one window. (a) Subject-wise: whole subjects are held out, so nothing about a test subject is seen in training. (b) Window-wise: test windows are drawn at random, so most test windows have highly correlated neighbours from the same recording in the training set.}}{4}{figure.4}\protected@file@percent }
 \newlabel{fig:protocols}{{4}{4}{The two evaluation protocols. Each row is a subject, each cell one window. (a) Subject-wise: whole subjects are held out, so nothing about a test subject is seen in training. (b) Window-wise: test windows are drawn at random, so most test windows have highly correlated neighbours from the same recording in the training set}{figure.4}{}}
@@ -48,7 +55,13 @@
 \bibstyle{IEEEbib}
 \bibdata{refs}
 \bibcite{hausdorff2007}{1}
-\bibcite{gu2023mamba}{2}
+\bibcite{frenkel2005treadmill}{2}
+\bibcite{kaufman2012leakage}{3}
+\bibcite{varoquaux2022machine}{4}
+\bibcite{he2016resnet}{5}
+\bibcite{gu2022s4}{6}
+\bibcite{gu2023mamba}{7}
+\bibcite{goldberger2000physiobank}{8}
 \@writefile{toc}{\contentsline {section}{\numberline {5} Conclusion}{5}{section.5}\protected@file@percent }
 \@writefile{toc}{\contentsline {section}{\numberline {6} References}{5}{section.6}\protected@file@percent }
 \gdef \@abspage@last{5}

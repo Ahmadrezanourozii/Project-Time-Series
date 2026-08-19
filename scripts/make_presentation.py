@@ -281,7 +281,22 @@ def main() -> None:
         "models overfit by epoch 1–4 → warm-up + cosine, dropout ≤ 0.3",
     ], size=12, bold_first=True)
 
-    # 12 — discussion
+    # 12 — inference on unseen data
+    s = add(prs, "Textfolie", "Ready for inference on a new cohort")
+    textbox(s, 0.6, 1.35, 6.1, 4.6, [
+        "What ships with the model",
+        "one file per fold: weights + the per-channel mean/std of that fold's training subjects + its calibrated threshold",
+        "new recording → trim 5 s → per-second tokens → 30 s windows → normalise with the stored statistics",
+        "five fold models scored, averaged per window, then per recording",
+    ], size=13.5, bold_first=True)
+    textbox(s, 6.9, 1.35, 5.8, 4.6, [
+        "Why the stored statistics matter",
+        "recomputing mean/std on the new cohort would leak its own distribution into its predictions",
+        "verified: windows rebuilt from a raw file at inference are numerically identical to the training windows",
+        "one command:  python predict.py --bundle … --input <new .txt dir>",
+    ], size=13.5, bold_first=True)
+
+    # 13 — discussion
     s = add(prs, "Textfolie", "Discussion")
     textbox(s, 0.6, 1.35, 6.1, 4.6, [
         "Strengths",
@@ -297,7 +312,7 @@ def main() -> None:
         "stride-cycle tokens alone underperform — their information is not yet fully exploited",
     ], size=14, bold_first=True)
 
-    # 13 — conclusion
+    # 14 — conclusion
     s = add(prs, "Textfolie", "Conclusion")
     textbox(s, 0.6, 1.35, 12.1, 4.6, [
         "Mamba is the strongest model here under leakage-free evaluation: 78% accuracy, 0.78 weighted F1, 0.82 AUC on both feet (79% on the right foot)",
@@ -307,7 +322,7 @@ def main() -> None:
         "Next: more subjects (dual-task recordings, other cohorts), richer gait-cycle descriptors, calibrated per-subject uncertainty, UPDRS severity regression",
     ], size=15)
 
-    # 14 — closing
+    # 15 — closing
     s = add(prs, "Schlussfolie")
     for ph in list(s.placeholders):
         ph._element.getparent().remove(ph._element)

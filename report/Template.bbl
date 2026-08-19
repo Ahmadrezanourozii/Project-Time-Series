@@ -5,9 +5,39 @@ Jeffrey~M. Hausdorff,
 \newblock ``Gait dynamics in parkinson's disease: common and distinct behavior among stride length, gait variability, and fractal-like scaling,''
 \newblock {\em Chaos}, vol. 19, no. 2, pp. 026113, 2009.
 
+\bibitem{frenkel2005treadmill}
+Silvi Frenkel-Toledo, Nir Giladi, Chava Peretz, Talia Herman, Leor Gruendlinger, and Jeffrey~M. Hausdorff,
+\newblock ``Treadmill walking as an external pacemaker to improve gait rhythm and stability in parkinson's disease,''
+\newblock {\em Movement Disorders}, vol. 20, no. 9, pp. 1109--1114, 2005.
+
+\bibitem{kaufman2012leakage}
+Shachar Kaufman, Saharon Rosset, Claudia Perlich, and Ori Stitelman,
+\newblock ``Leakage in data mining: Formulation, detection, and avoidance,''
+\newblock {\em ACM Transactions on Knowledge Discovery from Data}, vol. 6, no. 4, pp. 1--21, 2012.
+
+\bibitem{varoquaux2022machine}
+Ga{\"e}l Varoquaux and Veronika Cheplygina,
+\newblock ``Machine learning for medical imaging: methodological failures and recommendations for the future,''
+\newblock {\em npj Digital Medicine}, vol. 5, no. 48, 2022.
+
+\bibitem{he2016resnet}
+Kaiming He, Xiangyu Zhang, Shaoqing Ren, and Jian Sun,
+\newblock ``Deep residual learning for image recognition,''
+\newblock in {\em Proc. IEEE Conf. Computer Vision and Pattern Recognition (CVPR)}, 2016, pp. 770--778.
+
+\bibitem{gu2022s4}
+Albert Gu, Karan Goel, and Christopher R{\'e},
+\newblock ``Efficiently modeling long sequences with structured state spaces,''
+\newblock {\em International Conference on Learning Representations (ICLR)}, 2022.
+
 \bibitem{gu2023mamba}
 Albert Gu and Tri Dao,
 \newblock ``Mamba: Linear-time sequence modeling with selective state spaces,''
 \newblock {\em arXiv preprint arXiv:2312.00752}, 2023.
+
+\bibitem{goldberger2000physiobank}
+Ary~L. Goldberger, Luis A.~N. Amaral, Leon Glass, Jeffrey~M. Hausdorff, Plamen~Ch. Ivanov, Roger~G. Mark, Joseph~E. Mietus, George~B. Moody, Chung-Kang Peng, and H.~Eugene Stanley,
+\newblock ``Physiobank, physiotoolkit, and physionet: components of a new research resource for complex physiologic signals,''
+\newblock {\em Circulation}, vol. 101, no. 23, pp. e215--e220, 2000.
 
 \end{thebibliography}

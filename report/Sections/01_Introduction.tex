@@ -8,7 +8,8 @@ and are coarsely quantised, which motivates objective, sensor-based measures.
 Instrumented insoles record the vertical ground reaction force (VGRF) under
 each foot at high rate and low cost, and the resulting multivariate time
 series carries the stride-timing irregularity, reduced swing time and
-left--right asymmetry that characterise parkinsonian gait \cite{hausdorff2007}.
+left--right asymmetry that characterise parkinsonian gait \cite{hausdorff2007,
+frenkel2005treadmill}.
 
 The methodological question this report addresses is not only \emph{which}
 model classifies these signals best, but \emph{how a reported accuracy should
@@ -17,16 +18,20 @@ be read}. Published accuracies on the PhysioNet gait database span roughly
 families involved. A large part of that spread comes from how recordings are
 split: when a recording is cut into windows and those windows are then divided
 at random, windows of the same subject appear in both training and test data.
-A classifier can then recognise the individual rather than the disease. Our
-experiments make that effect explicit and quantify it on identical data.
+A classifier can then recognise the individual rather than the disease --- a
+textbook instance of data leakage \cite{kaufman2012leakage}, and one of the
+methodological failure modes repeatedly documented in medical machine learning
+\cite{varoquaux2022machine}. Our experiments make that effect explicit and
+quantify it on identical data.
 
 \subsection{Related work}
 \label{ssec:sota}
 Classical pipelines on this database combine hand-crafted statistics of the
-VGRF channels with Random Forests or kernel SVMs. Deep models -- 1D-ResNets,
-recurrent networks and, more recently, transformers -- operate on the raw
-signal or on sequences of feature vectors. Structured state-space models
-(S4, and subsequently Mamba \cite{gu2023mamba}) achieve transformer-level
+VGRF channels with Random Forests or kernel SVMs. Deep models -- 1D-ResNets
+\cite{he2016resnet}, recurrent networks and, more recently, transformers --
+operate on the raw signal or on sequences of feature vectors. Structured
+state-space models (S4 \cite{gu2022s4}, and subsequently Mamba
+\cite{gu2023mamba}) achieve transformer-level
 sequence modelling at linear cost in sequence length by making the state
 transition input-dependent (selective scan), which makes them attractive for
 long physiological recordings. Mamba has been applied to speech, EEG and ECG,

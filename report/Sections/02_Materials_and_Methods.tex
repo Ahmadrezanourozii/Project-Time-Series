@@ -20,8 +20,8 @@ recordings to the per-subject PD/HC decision.
 
 \subsection{Data}
 \label{ssec:data}
-We use the PhysioNet \emph{Gait in Parkinson's Disease} database, pooling its
-three studies (Ga, Ju, Si). Each subject walked on level ground for about two
+We use the PhysioNet \emph{Gait in Parkinson's Disease} database
+\cite{goldberger2000physiobank}, pooling its three studies (Ga, Ju, Si). Each subject walked on level ground for about two
 minutes while eight force sensors per foot sampled at 100\,Hz; the dataset
 provides the 16 sensor channels plus the total force under each foot. Our
 subset comprises the 100 subjects with a normal-walk recording, balanced by
@@ -103,6 +103,18 @@ per fold on that fold's \emph{validation} subjects by maximising balanced
 accuracy, using the model trained on training data only; test data never
 influences it. Results at the fixed threshold 0.5 are also reported and differ
 by at most two points.
+
+\subsubsection{Deployment on unseen cohorts}
+Because the trained system is meant to be applied to recordings it has never
+seen, each fold's weights are exported together with the per-channel mean and
+standard deviation of \emph{that fold's training subjects} and its calibrated
+threshold. At inference a new recording is trimmed, tokenised and normalised
+with those stored statistics -- never with statistics recomputed from the new
+cohort, which would leak the target distribution into its own predictions --
+and the five fold models' window scores are averaged. We verified that the
+windows rebuilt from a raw file at inference are numerically identical to the
+training windows of the same subject, so the deployed path cannot silently
+drift from the evaluated one.
 
 \subsubsection{Evaluation metrics}
 We report accuracy, precision, recall and F1 (weighted by class support, so
