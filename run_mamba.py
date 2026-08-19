@@ -41,9 +41,10 @@ from baseline.metrics import bootstrap_metrics, compute_point_metrics, confusion
 from baseline.reporting import plot_confusion_matrix, save_latex_table
 from dl.aggregate import aggregate_subjects
 from dl.config import WEIGHT_DECAY
-from dl.datasets import FoldSplitData, WindowDataset, assemble_fold_splits, concat_splits
+from baseline.config import LABEL_TO_INT
+from dl.datasets import FoldSplitData, WindowDataset, _fit_normalize, assemble_fold_splits, concat_splits
 from dl.seeding import fold_seed, set_all_seeds
-from dl.windows import RawWindowTable
+from dl.windows import RawWindowTable, select_foot_channels
 from mamba_model import HAVE_MAMBA_SSM, MODEL_SIZES, MambaClassifier
 
 FOOT_ORDER = ["left", "right", "both"]
@@ -264,12 +265,44 @@ def _train_once(
     return model, best_epoch, best_auc, batch_size
 
 
+def assemble_window_random_splits(fold_idx: int, foot: str, table: RawWindowTable, seed: int) -> dict[str, FoldSplitData]:
+    """Deliberately LEAKY reference protocol: windows -- not subjects -- are
+    split 60/20/20 at random (stratified by label), so windows of the same
+    subject occur in train and test. This is the protocol implicitly used by
+    much of the published work on this dataset; it is reported only as a
+    contrast to the subject-wise protocol, never as the headline result.
+    """
+    foot_data = select_foot_channels(table, foot)
+    y_all = np.array([LABEL_TO_INT[lbl] for lbl in table.label], dtype=np.int64)
+
+    rng = np.random.RandomState(1000 + fold_idx + seed)
+    assign = np.empty(len(y_all), dtype=object)
+    for label_value in np.unique(y_all):
+        idx = np.flatnonzero(y_all == label_value)
+        rng.shuffle(idx)
+        n_train, n_val = int(0.6 * len(idx)), int(0.2 * len(idx))
+        assign[idx[:n_train]] = "train"
+        assign[idx[n_train : n_train + n_val]] = "validation"
+        assign[idx[n_train + n_val :]] = "test"
+
+    masks = {name: (assign == name) for name in ("train", "validation", "test")}
+    train_X, val_X, test_X = (foot_data[masks[name]] for name in ("train", "validation", "test"))
+    train_n, val_n, test_n = _fit_normalize(train_X, val_X, test_X)
+    return {
+        name: FoldSplitData(arr, y_all[masks[name]], table.subject_id[masks[name]], table.window_idx[masks[name]])
+        for name, arr in zip(("train", "validation", "test"), (train_n, val_n, test_n))
+    }
+
+
 def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_kwargs: dict) -> FoldResult:
-    splits = assemble_fold_splits(fold_idx, foot, table)
-    for split_a, split_b in [("train", "test"), ("validation", "test"), ("train", "validation")]:
-        overlap = set(splits[split_a].subject_id) & set(splits[split_b].subject_id)
-        if overlap:
-            raise RuntimeError(f"Fold {fold_idx}: subject leakage between {split_a}/{split_b}: {overlap}")
+    if args.split_mode == "window":
+        splits = assemble_window_random_splits(fold_idx, foot, table, args.seed)
+    else:
+        splits = assemble_fold_splits(fold_idx, foot, table)
+        for split_a, split_b in [("train", "test"), ("validation", "test"), ("train", "validation")]:
+            overlap = set(splits[split_a].subject_id) & set(splits[split_b].subject_id)
+            if overlap:
+                raise RuntimeError(f"Fold {fold_idx}: subject leakage between {split_a}/{split_b}: {overlap}")
 
     device = resolve_device()
     in_channels = splits["train"].X.shape[1]
@@ -420,7 +453,7 @@ def save_tables_and_figures(all_results: dict, output_dir: Path) -> None:
     for level in ("window", "subject_mean_prob"):
         rows = []
         for foot in FOOT_ORDER:
-            if foot not in all_results:
+            if foot not in all_results or level not in all_results[foot]:
                 continue
             boot = all_results[foot][level]["bootstrap"]
             rows.append(
@@ -447,6 +480,8 @@ def save_tables_and_figures(all_results: dict, output_dir: Path) -> None:
 
     for foot, blocks in all_results.items():
         for level in ("window", "subject_mean_prob"):
+            if level not in blocks:
+                continue
             c = blocks[level]["confusion"]
             cm = np.array([[c["tn"], c["fp"]], [c["fn"], c["tp"]]])
             title = f"Mamba – {foot} ({'window' if level == 'window' else 'subject'} level)"
@@ -464,6 +499,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=Path("outputs/mamba"))
     parser.add_argument("--checkpoint-dir", type=Path, default=None)
     parser.add_argument("--foot", default="all", choices=["left", "right", "both", "all"])
+    parser.add_argument(
+        "--split-mode",
+        default="subject",
+        choices=["subject", "window"],
+        help="'subject' = leakage-free protocol (headline); 'window' = leaky reference protocol",
+    )
     parser.add_argument("--folds", default="1,2,3,4,5")
     parser.add_argument("--model-size", default="base", choices=list(MODEL_SIZES))
     parser.add_argument("--variant", default="mamba2", choices=["mamba1", "mamba2"])
@@ -566,33 +607,40 @@ def main() -> None:
             )
             fold_results = per_seed
 
-        if len(args.folds) == 5 and not args.smoke:
+        subject_wise = args.split_mode == "subject"
+        if subject_wise and len(args.folds) == 5 and not args.smoke:
             counts = {s: int(np.sum(pooled.subject_id == s)) for s in set(pooled.subject_id)}
             if len(counts) != 100:
                 raise RuntimeError(f"Pooled test covers {len(counts)} subjects, expected 100")
 
-        blocks = {
-            "window": metrics_block(pooled, args.n_boot),
-            "subject_mean_prob": metrics_block(aggregate_subjects(pooled, "mean_prob", thresholds), args.n_boot),
-            "subject_majority": metrics_block(aggregate_subjects(pooled, "majority"), args.n_boot),
-            "subject_mean_prob_t05": metrics_block(aggregate_subjects(pooled, "mean_prob"), args.n_boot),
-            "best_params_per_fold": pooled.best_params,
-        }
+        blocks = {"window": metrics_block(pooled, args.n_boot), "best_params_per_fold": pooled.best_params}
+        if subject_wise:
+            # Under the leaky window split a subject's windows are spread over
+            # train and test, so a per-subject decision is not meaningful.
+            blocks["subject_mean_prob"] = metrics_block(aggregate_subjects(pooled, "mean_prob", thresholds), args.n_boot)
+            blocks["subject_majority"] = metrics_block(aggregate_subjects(pooled, "majority"), args.n_boot)
+            blocks["subject_mean_prob_t05"] = metrics_block(aggregate_subjects(pooled, "mean_prob"), args.n_boot)
         all_results[foot] = blocks
 
         save_predictions(pooled, args.output_dir / "predictions" / f"mamba_{foot}_pooled.csv")
-        save_predictions(
-            aggregate_subjects(pooled, "mean_prob", thresholds),
-            args.output_dir / "predictions" / f"mamba_{foot}_subjects.csv",
-        )
         fmt = lambda v: "nan" if v is None else f"{v:.3f}"
-        win_acc = blocks["window"]["point"]["accuracy"]
-        subj = blocks["subject_mean_prob"]["point"]
-        print(
-            f"[{foot}] window acc={fmt(win_acc)} | subject acc={fmt(subj['accuracy'])} "
-            f"prec_w={fmt(subj['precision_w'])} rec_w={fmt(subj['recall_w'])} f1_w={fmt(subj['f1_w'])} "
-            f"auc={fmt(subj['auc'])}"
-        )
+        win = blocks["window"]["point"]
+        if subject_wise:
+            save_predictions(
+                aggregate_subjects(pooled, "mean_prob", thresholds),
+                args.output_dir / "predictions" / f"mamba_{foot}_subjects.csv",
+            )
+            subj = blocks["subject_mean_prob"]["point"]
+            print(
+                f"[{foot}] window acc={fmt(win['accuracy'])} | subject acc={fmt(subj['accuracy'])} "
+                f"prec_w={fmt(subj['precision_w'])} rec_w={fmt(subj['recall_w'])} f1_w={fmt(subj['f1_w'])} "
+                f"auc={fmt(subj['auc'])}"
+            )
+        else:
+            print(
+                f"[{foot}] LEAKY window-level acc={fmt(win['accuracy'])} prec_w={fmt(win['precision_w'])} "
+                f"rec_w={fmt(win['recall_w'])} f1_w={fmt(win['f1_w'])} auc={fmt(win['auc'])}"
+            )
 
     save_tables_and_figures(all_results, args.output_dir)
 
