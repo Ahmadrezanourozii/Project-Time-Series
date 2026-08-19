@@ -9,11 +9,12 @@ recordings to the per-subject PD/HC decision.
   \includegraphics[width=\textwidth]{figures/fig1_pipeline}
   \caption{End-to-end pipeline. Raw VGRF recordings (16 sensors plus two
   per-foot totals, 100\,Hz) are trimmed, windowed and converted into token
-  sequences; a bidirectional Mamba encoder produces a window score, and the
-  scores of a subject's windows are averaged into one decision. Normalisation
-  statistics and every hyper-parameter are estimated on training and
-  validation data only, and each of the five subject-wise folds contributes a
-  disjoint set of test subjects.}
+  sequences -- one token per second, holding 11 statistics for each of the 18
+  channels; the Mamba encoder produces a window score, and the scores of a
+  subject's windows are averaged into one decision. Normalisation statistics
+  and every hyper-parameter are estimated on training and validation data
+  only, and each of the five subject-wise folds contributes a disjoint set of
+  test subjects.}
   \label{fig:pipeline}
 \end{figure*}
 
@@ -62,16 +63,18 @@ from a known commit.
 \subsection{Proposed approach}
 \label{ssec:mod}
 
-\subsubsection{Bidirectional Mamba classifier}
+\subsubsection{Mamba classifier}
 A Mamba block is a selective state-space layer: its state transition and input
 projections are functions of the input, so the recurrence can forget or retain
 information conditioned on content, and it runs in linear time in the sequence
 length \cite{gu2023mamba}. Standard Mamba is causal, which suits language
-modelling but wastes information when an entire window is available at
-inference. We therefore use a bidirectional block: the normalised token
-sequence is processed by a forward mixer and, after reversal, by a second
-mixer with independent parameters, and the two outputs are summed before the
-residual connection.
+modelling but discards the right-hand context when an entire window is
+available at inference. We therefore also implemented a bidirectional block --
+the normalised token sequence is processed by a forward mixer and, after
+reversal, by a second mixer with independent parameters, and the two outputs
+are summed before the residual connection -- and ablate it in
+Section~\ref{sec:exp}. The reported model uses the bidirectional block,
+although the ablation finds no advantage over the causal one at matched size.
 
 The classifier projects tokens to $d_{\text{model}}$, applies $L$ such blocks,
 and pools over time by concatenating the mean and the maximum of the final

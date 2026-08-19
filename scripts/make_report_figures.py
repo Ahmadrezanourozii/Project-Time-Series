@@ -44,29 +44,30 @@ def _arrow(ax, x0, y0, x1, y1):
 
 
 def fig_pipeline() -> None:
-    fig, ax = plt.subplots(figsize=(7.0, 2.05))
+    fig, ax = plt.subplots(figsize=(7.0, 1.75))
     ax.set_xlim(0, 1); ax.set_ylim(0, 1); ax.axis("off")
 
-    y, h = 0.52, 0.34
-    boxes = [
-        (0.005, 0.145, "Raw VGRF\n16 sensors + 2 totals\n100 Hz, 100 subjects", DARK_BLUE),
-        (0.170, 0.150, "Pre-processing\ndrop first 5 s\n5 s windows, 1 s step", DARK_BLUE),
-        (0.340, 0.165, "Tokenisation\n11 stats $\\times$ 18 ch per 1 s\n(+ stride-cycle features)", ORANGE),
-        (0.525, 0.150, "Bidirectional\nMamba (SSM)\n$d=256$, 6 layers", DARK_BLUE),
-        (0.695, 0.140, "Mean\\,$\\|$\\,max pool\n+ linear head\nwindow score", DARK_BLUE),
-        (0.855, 0.140, "Subject decision\nmean score over\nwindows $\\rightarrow$ PD / HC", ORANGE),
+    y, h, gap = 0.50, 0.42, 0.028
+    labels = [
+        ("Raw VGRF\n16 sensors + 2 totals\n100 Hz, 100 subjects", DARK_BLUE),
+        ("Pre-processing\ndrop first 5 s\n5 s windows, 1 s step", DARK_BLUE),
+        ("Tokenisation\n11 statistics/channel\nper 1 s of signal", ORANGE),
+        ("Mamba encoder\n6 blocks, $d=256$\nmean + max pooling", DARK_BLUE),
+        ("Subject decision\nmean window score\nPD / HC", ORANGE),
     ]
-    for x, w, text, color in boxes:
-        _box(ax, x, y, w, h, text, color)
-        if x > 0.01:
-            _arrow(ax, x - 0.022, y + h / 2, x - 0.003, y + h / 2)
+    w = (1.0 - gap * (len(labels) - 1)) / len(labels)
+    for i, (text, color) in enumerate(labels):
+        x = i * (w + gap)
+        _box(ax, x, y, w, h, text, color, fontsize=6.6)
+        if i:
+            _arrow(ax, x - gap + 0.004, y + h / 2, x - 0.004, y + h / 2)
 
-    ax.text(0.5, 0.30, "5 predefined subject-wise folds (60 / 20 / 20 subjects) — "
+    ax.text(0.5, 0.31, "5 predefined subject-wise folds (60 / 20 / 20 subjects) — "
                        "no subject appears in more than one split",
-            ha="center", va="center", fontsize=7.5, color=DARK_BLUE)
-    ax.text(0.5, 0.16, "per-channel z-score fitted on training windows only  •  "
-                       "hyper-parameters chosen on validation  •  test touched once",
-            ha="center", va="center", fontsize=7, color=GREY)
+            ha="center", va="center", fontsize=7, color=DARK_BLUE)
+    ax.text(0.5, 0.15, "per-channel z-score fitted on training windows only  $\\cdot$  "
+                       "hyper-parameters and threshold chosen on validation  $\\cdot$  test touched once",
+            ha="center", va="center", fontsize=6.5, color=GREY)
     fig.savefig(OUT / "fig1_pipeline.pdf", bbox_inches="tight")
     plt.close(fig)
 
