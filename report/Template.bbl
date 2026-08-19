@@ -1,0 +1,13 @@
+\begin{thebibliography}{1}
+
+\bibitem{hausdorff2007}
+Jeffrey~M. Hausdorff,
+\newblock ``Gait dynamics in parkinson's disease: common and distinct behavior among stride length, gait variability, and fractal-like scaling,''
+\newblock {\em Chaos}, vol. 19, no. 2, pp. 026113, 2009.
+
+\bibitem{gu2023mamba}
+Albert Gu and Tri Dao,
+\newblock ``Mamba: Linear-time sequence modeling with selective state spaces,''
+\newblock {\em arXiv preprint arXiv:2312.00752}, 2023.
+
+\end{thebibliography}

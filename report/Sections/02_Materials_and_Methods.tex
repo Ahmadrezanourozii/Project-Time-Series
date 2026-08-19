@@ -1,0 +1,110 @@
+\section{Materials \& Methods}
+\label{sec:matmeth}
+
+Figure~\ref{fig:pipeline} summarises the complete pipeline, from the raw force
+recordings to the per-subject PD/HC decision.
+
+\begin{figure*}[t]
+  \centering
+  \includegraphics[width=\textwidth]{figures/fig1_pipeline}
+  \caption{End-to-end pipeline. Raw VGRF recordings (16 sensors plus two
+  per-foot totals, 100\,Hz) are trimmed, windowed and converted into token
+  sequences; a bidirectional Mamba encoder produces a window score, and the
+  scores of a subject's windows are averaged into one decision. Normalisation
+  statistics and every hyper-parameter are estimated on training and
+  validation data only, and each of the five subject-wise folds contributes a
+  disjoint set of test subjects.}
+  \label{fig:pipeline}
+\end{figure*}
+
+\subsection{Data}
+\label{ssec:data}
+We use the PhysioNet \emph{Gait in Parkinson's Disease} database, pooling its
+three studies (Ga, Ju, Si). Each subject walked on level ground for about two
+minutes while eight force sensors per foot sampled at 100\,Hz; the dataset
+provides the 16 sensor channels plus the total force under each foot. Our
+subset comprises the 100 subjects with a normal-walk recording, balanced by
+design into 50 PD patients and 50 healthy controls. The course-provided
+five-fold partition assigns 60 training, 20 validation and 20 test subjects
+per fold, class-balanced, with test sets disjoint across folds so that pooling
+the five test folds covers every subject exactly once.
+
+\subsubsection{Pre-processing}
+The first five seconds of each recording are discarded to remove gait
+initiation. The remainder is cut into 5\,s windows with a 1\,s step
+(500 samples per window), yielding 10\,407 windows in total, between 35 and
+254 per subject. Each window inherits its subject's label. Channel
+normalisation is a per-channel z-score whose mean and standard deviation are
+computed over the training windows of the current fold only and then applied
+unchanged to validation and test windows.
+
+Three token representations were compared, all sharing the above windowing:
+\textbf{(i) raw samples}, each window a $18 \times 500$ matrix;
+\textbf{(ii) amplitude-statistic tokens}, one token per second holding 11
+statistics (mean, standard deviation, skewness, kurtosis, RMS, zero-crossing
+rate, median, minimum, maximum, spectral energy, spectral entropy) for each of
+the 18 channels, i.e.\ 198 dimensions per token; and
+\textbf{(iii) stride-cycle tokens}, one token per gait cycle carrying stride,
+stance and swing time, stance ratio, normalised peak force and impulse,
+stride-time increment and double-support time for both feet. Foot contacts are
+detected by thresholding the per-foot total force at 5\,\% of its maximum, and
+strides outside 0.5--2.5\,s are rejected as implausible; the 100 subjects give
+between 34 and 166 strides each.
+
+\subsubsection{Materials/Instruments used}
+Models were trained on a Kaggle NVIDIA Tesla T4 (16\,GB, compute capability
+7.5) with PyTorch 2.10 (CUDA 12.8) and \texttt{mamba-ssm} 2.3.2, using mixed
+precision. Development, feature extraction and evaluation ran locally on an
+Apple M-series machine. Code was version-controlled on GitHub and pulled by
+the Kaggle notebook at the start of every run, so each reported number comes
+from a known commit.
+
+\subsection{Proposed approach}
+\label{ssec:mod}
+
+\subsubsection{Bidirectional Mamba classifier}
+A Mamba block is a selective state-space layer: its state transition and input
+projections are functions of the input, so the recurrence can forget or retain
+information conditioned on content, and it runs in linear time in the sequence
+length \cite{gu2023mamba}. Standard Mamba is causal, which suits language
+modelling but wastes information when an entire window is available at
+inference. We therefore use a bidirectional block: the normalised token
+sequence is processed by a forward mixer and, after reversal, by a second
+mixer with independent parameters, and the two outputs are summed before the
+residual connection.
+
+The classifier projects tokens to $d_{\text{model}}$, applies $L$ such blocks,
+and pools over time by concatenating the mean and the maximum of the final
+representation, which a linear layer maps to two logits. Three sizes were
+studied ($d_{\text{model}}, L$) $\in \{(64,2), (128,4), (256,6)\}$; the
+reported model is the largest.
+
+\subsubsection{Training strategy}
+Per fold we grid-search dropout $\in \{0.1, 0.3\}$ and learning rate
+$\in \{3\!\cdot\!10^{-4}, 10^{-4}\}$, training with AdamW (weight decay
+$10^{-3}$), three warm-up epochs followed by cosine decay, batch size 128 and
+at most 30 epochs. The configuration with the highest validation ROC-AUC is
+retrained on the union of training and validation subjects for the epoch count
+that was optimal on validation, and that model predicts the test subjects --
+the deep-learning analogue of \texttt{GridSearchCV(refit=True)} on a
+predefined split. Early stopping uses validation ROC-AUC with patience 6 and a
+minimum of 8 epochs. Because some folds occasionally converged to a degenerate
+solution, a fold whose best validation AUC stays below 0.70 is retrained with
+a different seed (at most three attempts). The final model averages the window
+scores of three seeds.
+
+\subsubsection{Decision rule and subject-level aggregation}
+The network scores windows, but the clinical unit is the subject. A subject's
+score is the mean of its window scores. The decision threshold is calibrated
+per fold on that fold's \emph{validation} subjects by maximising balanced
+accuracy, using the model trained on training data only; test data never
+influences it. Results at the fixed threshold 0.5 are also reported and differ
+by at most two points.
+
+\subsubsection{Evaluation metrics}
+We report accuracy, precision, recall and F1 (weighted by class support, so
+that recall equals accuracy by construction), together with sensitivity,
+specificity and ROC-AUC, plus confusion matrices. All values are the mean and
+standard deviation over 1000 bootstrap resamples of the pooled test
+predictions -- resampling subjects for subject-level metrics and windows for
+window-level metrics.

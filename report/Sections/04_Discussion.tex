@@ -1,0 +1,63 @@
+\section{Discussion}
+
+\textbf{Key findings.} Three results stand out. First, the Mamba classifier
+is the strongest model in this study under the leakage-free protocol: it
+improves on the best classical baseline by five accuracy points on both feet
+(78\,\% versus 73\,\%) and by twelve points over the previously best deep
+baseline (LSTM, 63\,\%). Second, what the model is fed matters more than how
+large it is: replacing raw samples by per-second statistics gained seven
+points and, more importantly, removed a training collapse that no amount of
+capacity or seed averaging had fixed. Third, the evaluation protocol dominates
+everything else. The same pipeline reports 78\,\% or above 95\,\% depending
+only on whether windows or subjects define the split.
+
+\textbf{Interpretation.} The collapse on folds~1 and~4 with raw input is
+informative. With 500 samples per window and 60 training subjects, a model
+reading raw force traces has to discover gait structure and discriminative
+features simultaneously from few effective examples, and on some folds it
+settles into a degenerate solution (validation AUC $\approx 0.53$) while
+reaching AUC $> 0.92$ on others. Per-second statistics supply that structure
+explicitly, so the sequence model can spend its capacity on how those
+descriptors evolve. This is consistent with the assignment's own framing,
+which permits either raw signals or feature-vector sequences as input to the
+deep models.
+
+The bidirectional ablation, by contrast, did not confirm the corresponding
+architectural intuition. A causal scan leaves the first tokens of a window with
+little context, which should penalise classification of a fully observed
+segment, yet at matched encoder size the causal and bidirectional variants
+performed equally (72\,\% each) and the causal one ranked subjects better
+(AUC $0.87$ versus $0.82$). Because mean-pooling already aggregates over the
+whole window, the late tokens of the causal scan may already carry the
+window-level evidence the classifier needs. With 100 subjects, a difference of
+this size is also within the bootstrap spread, so the honest reading is that
+the experiment is inconclusive rather than that bidirectionality hurts.
+
+The gap between the protocols has a mechanical explanation. Consecutive
+one-second windows of the same recording are highly correlated, so a window in
+the test set typically has near neighbours in the training set that share
+sensor placement, body mass and individual gait signature. The classifier can
+identify the subject and recall their label, and the RF result -- 98\,\%
+window-wise versus 73\,\% subject-wise -- shows how strong that shortcut is.
+Notably, the SVM-RBF baseline reaches 88\,\% under the leaky protocol, close
+to values frequently quoted for this database, which suggests such numbers are
+often obtained this way.
+
+\textbf{Comparison with prior studies.} Our subject-wise figures sit in the
+70--80\,\% band, below the 90\,\%+ commonly reported. We interpret the
+difference as protocol rather than method: the leaky columns of
+Table~\ref{tab:protocols} reproduce the high numbers with the very same
+features and models. Studies that do enforce subject-disjoint evaluation on
+this database report values compatible with ours.
+
+\textbf{Strengths and limitations.} Strengths: subject-disjoint splits fixed
+in advance, normalisation and hyper-parameter selection confined to training
+and validation data, thresholds calibrated on validation subjects only,
+seed-averaged results with bootstrap dispersion, and identical evaluation code
+for every model. Limitations: 100 subjects is small, so one subject moves
+subject-level accuracy by one point and the $\pm 4$ bootstrap spread is
+substantial; only the normal-walk recordings were used, leaving the dual-task
+recordings unexploited; stride detection uses a simple force threshold that
+may misfire on severely impaired gait; and stride-cycle tokens
+underperformed on their own (66\,\%), so their clinical information is
+probably not yet fully exploited by our fusion.

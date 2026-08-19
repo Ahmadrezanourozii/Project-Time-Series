@@ -1,0 +1,50 @@
+\section{Introduction}
+\label{sec:intro}
+
+Parkinson's disease (PD) is the second most common neurodegenerative disorder,
+and gait disturbance is among its earliest and most characteristic motor
+signs. Clinical rating scales such as the UPDRS depend on expert observation
+and are coarsely quantised, which motivates objective, sensor-based measures.
+Instrumented insoles record the vertical ground reaction force (VGRF) under
+each foot at high rate and low cost, and the resulting multivariate time
+series carries the stride-timing irregularity, reduced swing time and
+left--right asymmetry that characterise parkinsonian gait \cite{hausdorff2007}.
+
+The methodological question this report addresses is not only \emph{which}
+model classifies these signals best, but \emph{how a reported accuracy should
+be read}. Published accuracies on the PhysioNet gait database span roughly
+70--99\,\%, a spread far larger than the differences between the model
+families involved. A large part of that spread comes from how recordings are
+split: when a recording is cut into windows and those windows are then divided
+at random, windows of the same subject appear in both training and test data.
+A classifier can then recognise the individual rather than the disease. Our
+experiments make that effect explicit and quantify it on identical data.
+
+\subsection{Related work}
+\label{ssec:sota}
+Classical pipelines on this database combine hand-crafted statistics of the
+VGRF channels with Random Forests or kernel SVMs. Deep models -- 1D-ResNets,
+recurrent networks and, more recently, transformers -- operate on the raw
+signal or on sequences of feature vectors. Structured state-space models
+(S4, and subsequently Mamba \cite{gu2023mamba}) achieve transformer-level
+sequence modelling at linear cost in sequence length by making the state
+transition input-dependent (selective scan), which makes them attractive for
+long physiological recordings. Mamba has been applied to speech, EEG and ECG,
+but to our knowledge not yet to VGRF-based PD classification under a
+subject-disjoint protocol.
+
+\subsection{Contributions of this work}
+\label{ssec:contr}
+\begin{itemize}
+  \item A Mamba classifier for VGRF gait signals that outperforms the Random
+        Forest, SVM-RBF, 1D-ResNet and LSTM baselines under a subject-disjoint
+        protocol, together with an ablation of encoder size and of the
+        bidirectional extension of the otherwise causal state-space scan.
+  \item A token design study. Feeding the raw 100\,Hz signal makes training
+        collapse on two of five folds; representing each second by its
+        channel statistics removes the collapse and raises subject-level
+        accuracy from 69\,\% to 76\,\% at matched settings.
+  \item A quantified comparison of the subject-wise and window-wise
+        evaluation protocols on the same data, model and metrics, showing an
+        inflation of about twenty accuracy points from leakage alone.
+\end{itemize}
