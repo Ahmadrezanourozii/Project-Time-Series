@@ -1,0 +1,14 @@
+{
+  "id": "ah22reza/pd-mamba-predict",
+  "title": "PD Mamba Predict",
+  "code_file": "predict-new-data.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "machine_shape": "NvidiaTeslaT4",
+  "enable_internet": true,
+  "dataset_sources": ["ah22reza/pd-mamba-bundle", "ah22reza/pd-gait-vgrf-windows"],
+  "competition_sources": [],
+  "kernel_sources": []
+}
