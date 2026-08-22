@@ -217,23 +217,27 @@ def main() -> None:
         "The assignment allows raw signals and/or feature-vector sequences",
     ], size=13, bold_first=True)
 
-    # 7 — main results table
+    # 7 — main results table. Same cells, same rounding as Table 2 of the report:
+    # accuracy and precision from the bootstrap, F1 / sensitivity / AUC as point
+    # estimates, so the two documents cannot disagree in the last decimal.
     s = add(prs, "Nur Titel | weiß", "Results — subject-wise protocol (headline)")
-    rows = [["Model", "Acc (%)", "Pre (%)", "Rec (%)", "F1", "Sen (%)", "Spe (%)", "AUC"]]
+    mp = lambda foot, key: mamba["results"][foot]["subject_mean_prob"]["point"][key]
+    bp = lambda model, foot, key: base["subject_wise"][model][foot]["subject"]["point"][key]
+
+    rows = [["Model", "Acc (%)", "Pre (%)", "F1", "Sen (%)", "Spe (%)", "AUC"]]
     for name, key in [("SVM-RBF", "svm_rbf"), ("1D-ResNet", "resnet"), ("LSTM", "lstm"),
                       ("Random Forest", "random_forest")]:
         rows.append([name, b(key, "both", "accuracy"), b(key, "both", "precision_w"),
-                     b(key, "both", "recall_w"), b(key, "both", "f1_w"),
-                     b(key, "both", "sensitivity"), b(key, "both", "specificity"),
-                     b(key, "both", "auc")])
+                     f"{bp(key, 'both', 'f1_w'):.2f}", f"{bp(key, 'both', 'sensitivity') * 100:.0f}",
+                     f"{bp(key, 'both', 'specificity') * 100:.0f}", f"{bp(key, 'both', 'auc'):.2f}"])
     rows.append(["Mamba (ours)", m("both", "accuracy"), m("both", "precision_w"),
-                 m("both", "recall_w"), m("both", "f1_w"), m("both", "sensitivity"),
-                 m("both", "specificity"), m("both", "auc")])
+                 f"{mp('both', 'f1_w'):.2f}", f"{mp('both', 'sensitivity') * 100:.0f}",
+                 f"{mp('both', 'specificity') * 100:.0f}", f"{mp('both', 'auc'):.2f}"])
     table(s, 0.75, 1.75, 11.8, 3.0, rows, highlight_row=5, font_size=12)
     textbox(s, 0.75, 5.1, 11.8, 1.1, [
-        "Both feet, 100 subjects pooled over the five disjoint test folds; mean ± std over 1000 bootstrap resamples.",
-        "Precision / recall / F1 are class-weighted, so recall equals accuracy by construction. PD = positive class.",
-    ], size=12, bullet=False)
+        "Both feet, 100 subjects pooled over the five disjoint test folds. Accuracy and precision are mean ± std over 1000 bootstrap resamples of the subjects.",
+        "Precision, recall and F1 are class-weighted, so recall equals accuracy by construction and is omitted. PD is the positive class.",
+    ], size=11.5, bullet=False)
 
     # 8 — per foot
     s = add(prs, "Nur Titel | weiß", "Results per foot configuration")
