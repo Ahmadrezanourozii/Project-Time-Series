@@ -7,14 +7,14 @@ recordings to the per-subject PD/HC decision.
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig1_pipeline}
-  \caption{End-to-end pipeline. Raw VGRF recordings (16 sensors plus two
-  per-foot totals, 100\,Hz) are trimmed, windowed and converted into token
-  sequences -- one token per second, holding 11 statistics for each of the 18
-  channels; the Mamba encoder produces a window score, and the scores of a
-  subject's windows are averaged into one decision. Normalisation statistics
-  and every hyper-parameter are estimated on training and validation data
-  only, and each of the five subject-wise folds contributes a disjoint set of
-  test subjects.}
+  \caption{End-to-end pipeline of the reported model. Raw VGRF recordings
+  (16 sensors plus two per-foot totals, 100\,Hz) are trimmed and converted into
+  token sequences -- one token per second holding 11 statistics for each of the
+  18 channels, grouped into 60\,s windows; the Mamba encoder scores each window
+  and a subject's window scores are averaged into one decision. Normalisation
+  statistics and every hyper-parameter are estimated on training and validation
+  data only, and each of the five subject-wise folds contributes a disjoint set
+  of test subjects.}
   \label{fig:pipeline}
 \end{figure*}
 
@@ -32,24 +32,26 @@ the five test folds covers every subject exactly once.
 
 \subsubsection{Pre-processing}
 The first five seconds of each recording are discarded to remove gait
-initiation. The remainder is cut into 5\,s windows with a 1\,s step
-(500 samples per window), yielding 10\,407 windows in total, between 35 and
-254 per subject. Each window inherits its subject's label. Channel
-normalisation is a per-channel z-score whose mean and standard deviation are
-computed over the training windows of the current fold only and then applied
-unchanged to validation and test windows.
+initiation. Each window inherits its subject's label, and channel normalisation
+is a per-channel z-score whose mean and standard deviation are computed over
+the training windows of the current fold only, then applied unchanged to
+validation and test.
 
-Three token representations were compared, all sharing the above windowing:
-\textbf{(i) raw samples}, each window a $18 \times 500$ matrix;
-\textbf{(ii) amplitude-statistic tokens}, one token per second holding 11
-statistics (mean, standard deviation, skewness, kurtosis, RMS, zero-crossing
-rate, median, minimum, maximum, spectral energy, spectral entropy) for each of
-the 18 channels, i.e.\ 198 dimensions per token; and
-\textbf{(iii) stride-cycle tokens}, one token per gait cycle carrying stride,
-stance and swing time, stance ratio, normalised peak force and impulse,
-stride-time increment and double-support time for both feet. Contacts are
-detected by thresholding each foot's total force at 5\,\% of its maximum, and
-strides outside 0.5--2.5\,s are discarded.
+Three input representations were compared, each with its own segmentation.
+\textbf{(i) Raw samples}: the recording is cut into 5\,s windows with a 1\,s
+step, giving a $18 \times 500$ matrix per window and 10\,407 windows in total,
+between 35 and 254 per subject. \textbf{(ii) Amplitude-statistic tokens}: each
+second of signal becomes one token holding 11 statistics (mean, standard
+deviation, skewness, kurtosis, RMS, zero-crossing rate, median, minimum,
+maximum, spectral energy, spectral entropy) for each of the 18 channels, i.e.\
+198 dimensions; tokens are then grouped into windows of 30 or 60 seconds with a
+step of 10 or 15, which yields 827 and 363 windows respectively, between 1 and
+14 per subject at 60\,s. \textbf{(iii) Stride-cycle tokens}: one token per gait
+cycle carrying stride, stance and swing time, stance ratio, normalised peak
+force and impulse, stride-time increment and double-support time for both feet.
+Contacts are detected by thresholding each foot's total force at 5\,\% of its
+maximum, and strides outside 0.5--2.5\,s are discarded. The reported model uses
+representation (ii) with 60\,s windows.
 
 \subsubsection{Materials/Instruments used}
 Models were trained on a Kaggle NVIDIA Tesla T4 (16\,GB, compute capability
@@ -72,14 +74,14 @@ available at inference. We therefore also implemented a bidirectional block --
 the normalised token sequence is processed by a forward mixer and, after
 reversal, by a second mixer with independent parameters, and the two outputs
 are summed before the residual connection -- and ablate it in
-Section~\ref{sec:exp}. The reported model uses the bidirectional block,
+Section~\ref{ssec:arch}. The reported model uses the bidirectional block,
 although the ablation finds no advantage over the causal one at matched size.
 
 The classifier projects tokens to $d_{\text{model}}$, applies $L$ such blocks,
 and pools over time by concatenating the mean and the maximum of the final
 representation, which a linear layer maps to two logits. Three sizes were
 studied ($d_{\text{model}}, L$) $\in \{(64,2), (128,4), (256,6)\}$; the
-reported model is the largest.
+configuration selected in Section~\ref{ssec:selection} uses the middle one.
 
 \subsubsection{Training strategy}
 Per fold we grid-search dropout $\in \{0.1, 0.3\}$ and learning rate

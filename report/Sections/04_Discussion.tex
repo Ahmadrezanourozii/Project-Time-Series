@@ -22,8 +22,8 @@ the first half, leaving the sequence model to learn how the descriptors evolve.
 The bidirectional block was our other architectural idea and it did not survive
 its own ablation. A causal scan gives the first tokens of a window almost no
 context, which ought to hurt when the whole window is available at inference.
-Run at matched size and input, the two variants landed on the same accuracy and
-the same AUC to three decimals. Mean-pooling is the likely explanation: it
+Run at matched size and input, the two variants landed within a thousandth of
+each other on both accuracy and AUC. Mean-pooling is the likely explanation: it
 already aggregates across the window, so the late tokens of a causal scan can
 carry the evidence the classifier needs.
 
@@ -38,8 +38,8 @@ split, 88\,\%, is close to accuracies frequently quoted for this database.
 
 This is also our reading of the gap to the literature. Our results sit in the
 70--80\,\% band rather than above 90\,\%, and we do not think that reflects a
-weaker method: Figure~\ref{fig:results}(b) reproduces the high numbers with the
-same features and the same code.
+weaker method: Figure~\ref{fig:results}(b) reproduces the high numbers from
+identical features and identical code.
 
 Two caveats belong here. We searched forty-five configurations, and comparing
 them on pooled test accuracy would make the reported number optimistic, which

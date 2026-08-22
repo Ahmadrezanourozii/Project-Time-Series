@@ -62,8 +62,8 @@ def fig_pipeline() -> None:
 
     stages = [
         ("Raw VGRF", "18 channels, 100 Hz\n100 subjects", STAGE_FILL),
-        ("Pre-processing", "drop first 5 s\n5 s windows, 1 s step", STAGE_FILL),
-        ("Tokenisation", "11 statistics/channel\nper 1 s of signal", TOKEN_FILL),
+        ("Pre-processing", "drop first 5 s\nof gait initiation", STAGE_FILL),
+        ("Tokenisation", "11 statistics/channel\nper 1 s -> 60 s windows", TOKEN_FILL),
         ("Mamba encoder", "state-space blocks\nmean + max pooling", STAGE_FILL),
         ("Subject decision", "mean window score\nPD / HC", TOKEN_FILL),
     ]
@@ -172,7 +172,7 @@ def fig_results(mamba: dict, base: dict) -> None:
     ax1.text(-0.62, 50.8, "chance", fontsize=6, color=INK_SOFT, ha="left", va="bottom")
     ax1.set_xticks(xs)
     ax1.set_xticklabels([display[m] for m in models], fontsize=7.4, color=INK)
-    ax1.set_ylabel("Subject-level accuracy (\\%)", fontsize=7.6)
+    ax1.set_ylabel("Subject-level accuracy (%)", fontsize=7.6)
     ax1.set_ylim(45, 88)
     ax1.set_yticks([50, 60, 70, 80])
     ax1.tick_params(labelsize=7, length=0)
@@ -211,7 +211,7 @@ def fig_results(mamba: dict, base: dict) -> None:
     ax2.set_ylim(45, 125)
     ax2.set_yticks([50, 75, 100])
     ax2.tick_params(labelsize=7, length=0)
-    ax2.set_ylabel("Accuracy (\\%)", fontsize=7.6)
+    ax2.set_ylabel("Accuracy (%)", fontsize=7.6)
     ax2.legend(fontsize=6.8, frameon=False, loc="lower center", handlelength=1.1,
                handletextpad=0.45, ncol=2, columnspacing=1.0, bbox_to_anchor=(0.5, -0.42))
     ax2.set_title("(b)  Effect of the split unit", fontsize=8.2, fontweight="bold",
@@ -250,7 +250,7 @@ def fig_confusion(mamba: dict) -> None:
         sen = block["point"]["sensitivity"] * 100
         spe = block["point"]["specificity"] * 100
         ax.set_title(f"{foot.capitalize()}", fontsize=8.2, fontweight="bold", color=INK, pad=5)
-        ax.text(0.5, 1.13, f"acc {acc:.0f}\\%  ·  sen {sen:.0f}\\%  ·  spe {spe:.0f}\\%",
+        ax.text(0.5, 1.13, f"acc {acc:.0f}%  ·  sen {sen:.0f}%  ·  spe {spe:.0f}%",
                 transform=ax.transAxes, ha="center", fontsize=6.4, color=INK_SOFT)
         ax.set_xticks([0, 1]); ax.set_xticklabels(["HC", "PD"], fontsize=7.4)
         ax.set_yticks([0, 1]); ax.set_yticklabels(["HC", "PD"], fontsize=7.4)

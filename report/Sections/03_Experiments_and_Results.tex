@@ -5,10 +5,10 @@ Every experiment uses the five predefined subject-wise folds. A model is trained
 on the 60 training subjects, its hyper-parameters and decision threshold are
 chosen on the 20 validation subjects, and the 20 test subjects are predicted
 once. Because the five test sets are disjoint, pooling them gives exactly one
-prediction per subject and 10\,407 window predictions in total, so every subject
-is tested once and never appears in two roles. We ran fifteen GPU sessions
-covering four groups of experiments: the input representation, the architecture,
-the foot configuration, and the evaluation protocol.
+prediction per subject, so every subject is tested once and never appears in two
+roles. Roughly twenty GPU sessions covered five groups of experiments: the input
+representation, the architecture, the way a configuration is selected, the
+comparison against the baselines, and the evaluation protocol.
 
 \subsection{Experiment 1: what the network is fed}
 Raw signals were not merely weaker but unstable. On folds~1 and~4 the
@@ -16,16 +16,20 @@ validation AUC never left the neighbourhood of chance ($0.53$ and $0.54$) while
 folds~2, 3 and~5 exceeded $0.92$ with the same code and hyper-parameter grid.
 Longer windows (30\,s, 60\,s), restarts with fresh seeds and a larger encoder
 all failed to repair it. Amplitude-statistic tokens fixed the problem outright:
-the weakest fold rose to $0.75$ validation AUC and subject-level accuracy went
-from 69\,\% to 80\,\% on both feet, against 65\,\% for raw 60\,s windows and
-66\,\% for stride-cycle tokens. Stride-cycle tokens were the weakest input on
-their own, and fusing them
+the weakest fold rose to $0.75$ validation AUC. Comparing each representation at
+its own best configuration, subject-level accuracy on both feet went from
+69\,\% with raw 5\,s windows to 80\,\% with amplitude-statistic tokens, against
+65\,\% for raw 60\,s windows and 66\,\% for stride-cycle tokens. (Those are
+best-case figures per representation; the configuration actually reported is
+chosen in Section~\ref{ssec:selection} and scores 75\,\%.) Stride-cycle tokens
+were the weakest input on their own, and fusing them
 with the amplitude tokens did not beat the amplitude tokens alone, even though
 the two families are complementary at subject level in a Random Forest (AUC
 $0.79$, $0.83$ and $0.86$ for stride, amplitude and both).
 
 
 \subsection{Experiment 2: architecture}
+\label{ssec:arch}
 With the input fixed, encoder capacity was the factor that moved accuracy:
 enlarging the encoder from $d_{\text{model}}=128$, $L=4$ to
 $d_{\text{model}}=256$, $L=6$ took subject-level accuracy from 72\,\% to 80\,\%
@@ -46,7 +50,7 @@ across token families, which stayed below the best single model.
 
 \subsection{Experiment 3: selecting a configuration without using the test set}
 \label{ssec:selection}
-Forty-five configurations were trained in total. Choosing among them by pooled
+Forty-eight configurations were trained in total. Choosing among them by pooled
 test accuracy would leak the test set into the model definition, even though
 each individual run keeps train, validation and test apart. We therefore ranked
 all configurations by their mean validation ROC-AUC across the five folds, a
@@ -138,11 +142,11 @@ confusion matrices.
 \subsection{Experiment 5: the evaluation protocol}
 \label{ssec:protocols}
 To measure the influence of the split unit we repeated the evaluation with
-windows -- not subjects -- assigned at random to the 60/20/20 splits, leaving
-the data, features, models, metrics and code untouched, and re-trained the two classical baselines, which
-are cheap to fit. Accuracy rises by twenty points or more: the Random Forest
-goes from 73\,\% to 98\,\% and the SVM-RBF from 68\,\% to 88\,\%, as
-Figure~\ref{fig:results}(b) shows. A per-subject decision has no meaning under
+windows -- not subjects -- assigned at random to the 60/20/20 splits. Data,
+features, models, metrics and code were left untouched, and the two classical
+baselines, which are cheap to fit, were retrained. Accuracy rises by twenty
+points or more: the Random Forest goes from 73\,\% to 98\,\% and the SVM-RBF
+from 68\,\% to 88\,\%, as Figure~\ref{fig:results}(b) shows. A per-subject decision has no meaning under
 this protocol, since a subject's windows are spread across training and test,
 so only window-level numbers can be quoted. These numbers measure how well a
 model recognises individuals it has already seen, not whether it detects
