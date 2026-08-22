@@ -5,7 +5,7 @@ vs healthy control (HC) classification from gait vertical ground reaction force
 (VGRF) signals.
 **Owner**: Ahmadreza Nourozi (matriculation 23726011, M.Sc. AI).
 **Supervisor**: Tomás.
-**Last updated**: 2026-08-19.
+**Last updated**: 2026-08-22. **The project is finished and submitted-ready.**
 
 This file is the single place to re-read before touching the project again.
 It records what was tried, what the numbers were, what broke, and what is still
@@ -19,15 +19,21 @@ open — so no experiment needs to be repeated.
 |---|---|
 | Deliverable 1 (data analysis) | Done, submitted (`DataAnalysis.AhmadrezaNourozi.pptx`) |
 | Deliverable 2 (baselines) | Done, submitted (`Baseline Models.AhmadrezaNourozi.pptx`) |
-| Deliverable 3 (Mamba) | Training done — 15 GPU runs, best subject-level accuracy **0.78–0.80** |
-| Short report (LaTeX) | Written and compiling — `report/Template.pdf`, 4 pages + references |
-| Presentation | Built — `Mamba Results.AhmadrezaNourozi.pptx`, 14 slides for 15 min |
-| Inference on unseen data | Implemented and verified — `predict.py` + exportable model bundle |
-| **Open** | Final Kaggle run (bundle + clean ablations + leaky number for the reported model) was still running at last check |
+| Deliverable 3 (Mamba) | **Done.** ~20 GPU sessions, 48 configurations. Reported model: 60 s amplitude tokens, base encoder, 3 seeds → **75 % accuracy, 0.85 AUC** |
+| Short report | **Done and compliant** — `report/Template.pdf`, 4 content pages + 1 reference page |
+| Presentation | **Done** — `Mamba Results.AhmadrezaNourozi.pptx`, 15 slides for 15 min |
+| Inference on unseen data | **Done and tested on Kaggle** — `predict.py`, bundle dataset, standalone notebook |
+| Leakage audit | **Done** — `scripts/audit_leakage.py`, 34 checks, all pass |
+| Improvement attempt | **Done, negative** — see §11. The ceiling is reached; do not re-run |
+
+**Nothing is open.** The only remaining action is external: rotate the Kaggle
+API token (§6).
 
 **Supervisor feedback (2026-08-19)**: *"80% sounds good. I will later ask everyone
 to try inference in a new set."* → the subject-wise result is accepted, and the
-inference path is a real requirement, not a nice-to-have.
+inference path is a real requirement. It is built and verified (§7). Note the
+number later became 75 % after the selection-bias fix (§2); the drop is a
+correction, not a regression, and the reasoning is in the report.
 
 ---
 
@@ -398,3 +404,113 @@ Key implementation details worth remembering:
   are complementary to amplitude features in a *subject-level* RF (AUC 0.86).
 - Do **not** compare our numbers with papers that split by window — reproduce
   their protocol first (`--split-mode window`) and the numbers jump to 88–100 %.
+
+---
+
+## 11. The improvement attempt (2026-08-22) — negative, do not repeat
+
+After the report was written we asked whether 75 % could be beaten. The answer
+is no, and the evidence is strong enough that further search is not worth GPU
+time.
+
+**What was tried**, all judged by mean validation AUC, never by test:
+
+| Candidate | Validation AUC | Verdict |
+|---|---|---|
+| incumbent (60 s amplitude tokens, base) | 0.873 | reference |
+| larger encoder | 0.885 | ΔAcc −0.030, CI contains 0 |
+| subject-balanced sampling (`--balance-subjects`) | 0.879 | ΔAcc −0.010, CI contains 0 |
+| duty-cycle tokens, 60 s | 0.838 | worse |
+| duty-cycle tokens, 30 s | 0.841 | worse |
+
+`duty60` scored 0.81 on **test** — tempting, and exactly the trap the selection
+audit exists to prevent. Its validation AUC is in the bottom tier, so it was
+rejected.
+
+**Three measurements that explain the ceiling:**
+
+1. **A single scalar matches the deep model.** The fraction of the recording
+   during which the right foot carries load — one number, no learning, logistic
+   regression per fold — reaches **0.77 accuracy / 0.830 AUC**. Mamba reaches
+   0.77 / 0.854 at threshold 0.5, Random Forest 0.73 / 0.815. A paired bootstrap
+   over the same 100 subjects puts *every* pairwise difference inside a 95 %
+   interval containing zero. Four very different model classes land in a 0.04
+   AUC band: the signal is saturated.
+2. **The prescribed folds carry a study confound.** The three PhysioNet
+   sub-studies have different PD rates (Ga 0.58, Ju 0.50, Si 0.43) and the folds
+   are not stratified by study. A classifier using only "which study" has signal
+   in training but scores **AUC 0.46 at test** — below chance. Capacity spent on
+   study identity is actively subtracted from test performance, which explains
+   the fold-1/4 collapses and the seed variance better than any optimiser story.
+3. **n = 100 is the binding constraint.** The 95 % CI on 0.75 accuracy is
+   [0.67, 0.83]. Every configuration ever run, from 0.65 to 0.80, falls inside
+   one interval. Detecting a true five-point gain at 80 % power would need
+   roughly 1200 subjects.
+
+**Two claims that did not survive verification.** An expert-review agent
+suggested (a) fusing Mamba with the stance scalar reaches AUC 0.898 and (b) duty
+features are the missing ingredient. Reproducing (a) gave AUC 0.856 against
+0.854 — ΔAUC +0.002, nothing. For (b), a cheap subject-level probe *before*
+spending GPU time showed 0.849 with the duty features versus 0.850 without.
+Both were rejected on our own measurements. **Always reproduce a suggested
+number before acting on it.**
+
+**Honest stopping criterion, now met:** stop when the paired-bootstrap CI of
+(candidate − incumbent) contains zero for every candidate in the last rounds.
+It does, for all 48.
+
+---
+
+## 12. Quality-control findings (2026-08-22)
+
+A sentence-by-sentence pass over the report caught real errors. Re-run these
+checks if the report is ever edited again.
+
+| Found | Fix |
+|---|---|
+| Methods said "the reported model is the largest" encoder | It is the middle one (d=128, L=4). Corrected |
+| Methods said all three representations "share the above windowing" (5 s) | False: statistic tokens are grouped into 30 s / 60 s windows. Rewritten, and the pipeline figure updated |
+| Figures printed a literal `\%` in axis labels and subtitles | matplotlib does not interpret LaTeX escapes; use a plain `%` |
+| Experiment 1 quoted 80 % without qualification | It is the best configuration of that representation, not the reported model (75 %). Now stated |
+| Run counts stale ("fifteen sessions", "forty-five configurations") | Now twenty and forty-eight |
+| The report mixed conventions: baselines from bootstrap means, Mamba from point estimates (LSTM read 0.68 vs a true 0.673) | `scripts/fill_report_tables.py` now writes **every** cell of the results table from JSON with one convention |
+| Deck and report disagreed on AUC (0.86 vs 0.85) | Deck now reads the same files with the same rounding; a check confirms cell-by-cell agreement |
+| Window-level bootstrap resampled rows independently | Windows of one subject are near-duplicates; `bootstrap_metrics(..., groups=...)` now resamples whole subjects. Intervals were 2× too narrow |
+
+### Compliance state of `report/Template.pdf`
+
+Verified with `pdffonts`, `pdfimages`, `pdfinfo`, not by assumption:
+
+- 4 content pages + 1 page holding only references
+- 16/16 fonts embedded **and** subsetted (the IEEE spec's main requirement)
+- zero raster images — all figures are vector, so the 300 dpi rule cannot be violated
+- not encrypted; abstract 145 words; five keywords
+- every figure and table referenced; no undefined references; no overfull boxes
+- author footnote complete (name, email, matriculation, programme, address, date of birth)
+
+### Commands to re-verify everything
+
+```bash
+python scripts/audit_leakage.py                 # 34 leakage checks
+python scripts/fill_report_tables.py            # regenerate the results table from JSON
+python scripts/make_report_figures.py           # regenerate all figures (vector)
+python scripts/make_presentation.py             # rebuild the deck from the same JSON
+cd report && pdflatex Template && bibtex Template && pdflatex Template && pdflatex Template
+pdffonts Template.pdf ; pdfimages -list Template.pdf ; pdfinfo Template.pdf
+```
+
+---
+
+## 13. If you come back to this project
+
+1. Read §1, §2, §10 and §11 first. They tell you the result, the ceiling and
+   what not to retry.
+2. The deliverables are `report/Template.pdf` and
+   `Mamba Results.AhmadrezaNourozi.pptx`. Both are generated from
+   `outputs/mamba/final/` — never edit numbers by hand; run the scripts in §12.
+3. If a new test set arrives, use the standalone Kaggle notebook
+   `ah22reza/pd-mamba-predict` with the bundle dataset `ah22reza/pd-mamba-bundle`
+   attached. Expect roughly 75 % on genuinely unseen subjects.
+4. If the goal is a better number, the lever is **more subjects**, not more
+   tuning — §11 explains why in measured terms.
+5. Rotate the Kaggle token before doing anything else if it has not been done.
