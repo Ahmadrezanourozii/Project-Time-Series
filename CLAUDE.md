@@ -503,6 +503,9 @@ pdffonts Template.pdf ; pdfimages -list Template.pdf ; pdfinfo Template.pdf
 
 ## 13. If you come back to this project
 
+**Start with `RESUME.md`** — it holds the prompt to paste into a new session and
+lists what is not stored in the repo (Kaggle token, `Data/`, `outputs/`).
+
 1. Read §1, §2, §10 and §11 first. They tell you the result, the ceiling and
    what not to retry.
 2. The deliverables are `report/Template.pdf` and
