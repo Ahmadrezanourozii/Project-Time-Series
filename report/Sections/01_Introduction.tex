@@ -6,21 +6,20 @@ and disturbed gait is one of its earliest and most visible motor signs. Clinical
 scales such as the UPDRS rely on expert observation and are coarsely quantised,
 which is why sensor-based measures are attractive. Instrumented insoles record
 the vertical ground reaction force (VGRF) under each foot cheaply and at high
-rate, and the resulting multivariate series carries the stride-timing
-irregularity, shortened swing phase and left--right asymmetry that characterise
-parkinsonian gait \cite{hausdorff2007, frenkel2005treadmill}.
+rate, and the resulting series carries the stride-timing irregularity,
+shortened swing phase and left--right asymmetry that characterise parkinsonian
+gait \cite{hausdorff2007, frenkel2005treadmill}.
 
-Accuracies published on the PhysioNet gait database span roughly 70--99\,\%.
-That spread is much wider than the differences one would expect between the
-model families involved, which suggests something other than the model is
-driving it. A recording of two minutes yields more than a hundred overlapping
-windows, and if those windows are divided at random then windows of one subject
-end up in both the training and the test set. A classifier can then succeed by
-recognising the individual instead of the disease -- a textbook case of leakage
-\cite{kaufman2012leakage}, and one of the failure modes repeatedly documented in
-medical machine learning \cite{varoquaux2022machine}. This report therefore asks
-two questions at once: how well a state-space model classifies these signals,
-and how much of any reported accuracy is an artefact of the split.
+Accuracies published on the PhysioNet gait database span roughly 70--99\,\%,
+much wider than the differences one would expect between the model families
+involved. A two-minute recording yields more than a hundred overlapping
+windows, and if those are divided at random then windows of one subject end up
+in both training and test. A classifier can then succeed by recognising the
+individual instead of the disease -- a textbook case of leakage
+\cite{kaufman2012leakage}, and a failure mode repeatedly documented in medical
+machine learning \cite{varoquaux2022machine}. This report therefore asks two
+questions at once: how well a state-space model classifies these signals, and
+how much of a reported accuracy is an artefact of the split.
 
 \subsection{Related work}
 \label{ssec:sota}

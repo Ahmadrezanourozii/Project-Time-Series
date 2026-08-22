@@ -1,34 +1,27 @@
 \section{Conclusion}
 
-We classified Parkinson's disease from vertical ground reaction force recordings
-with a Mamba state-space model, evaluated on five predefined subject-disjoint
-folds. On both feet it reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted F1 and
-$0.85$ AUC at subject level, marginally ahead of the Random Forest, SVM-RBF,
-1D-ResNet and LSTM baselines run through the same evaluation code, though the
-Random Forest remains better on the right foot alone. What produced the result
-was the input representation rather than the architecture: the bidirectional
-extension of the causal scan, which we expected to help, made no measurable
-difference at matched size.
+We classified Parkinson's disease from vertical ground reaction force
+recordings with a Mamba state-space model on five subject-disjoint folds. On
+both feet it reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted F1 and $0.85$ AUC
+at subject level, marginally ahead of the Random Forest, SVM-RBF, 1D-ResNet and
+LSTM baselines run through the same evaluation code, though the Random Forest
+remains better on the right foot alone. The result came from the input
+representation rather than the architecture: the bidirectional extension of the
+causal scan made no measurable difference at matched size.
 
-The methodological result may be the more useful one. Re-running the same
+The methodological finding may be the more useful one. Re-running the same
 baselines with a window-wise split raises Random Forest accuracy from 73\,\% to
-98\,\% and SVM accuracy from 68\,\% to 88\,\%, without touching the features,
-the models or the metrics. When one recording produces more than a hundred
-correlated windows, the split unit is not an implementation detail, and an
-accuracy quoted for this database cannot be interpreted unless the split unit is
-stated alongside it. For the same reason we selected our final configuration on
-validation AUC rather than on test accuracy, which costs about three points but
-makes the reported number an estimate of performance on new subjects rather than
-a summary of the search.
+98\,\%, without touching the features, the models or the metrics. When one
+recording yields more than a hundred correlated windows the split unit is not a
+detail, and an accuracy quoted for this database cannot be interpreted until it
+is stated. For the same reason we selected the final configuration on
+validation AUC rather than test accuracy, which costs about three points but
+makes the number an estimate of performance on new subjects rather than a
+summary of our search.
 
-What we would do next is get more data before doing anything else. Every model
-we tried, classical or deep, plateaued in the same narrow band, and the
-subject-level analysis suggests the ceiling belongs to the cohort rather than to
-the method: 100 subjects means one person is worth one accuracy point. Pooling
-the dual-task recordings and other public VGRF cohorts is the obvious first
-step. After that, the stride-cycle descriptors are worth revisiting, since they
-proved complementary to the amplitude statistics at subject level even though
-they were weak on their own. Finally, a screening tool needs calibrated
-probabilities and some notion of per-subject confidence more than it needs
-another point of accuracy, and the same architecture would extend naturally to
-regressing UPDRS severity instead of a binary label.
+More data would help more than more tuning. Every model we tried, classical or
+deep, plateaued in the same narrow band, which points at the cohort rather than
+the method: with 100 subjects one person is worth one accuracy point. Pooling
+the dual-task recordings and other public VGRF cohorts is the obvious next
+step, and a screening tool would benefit more from calibrated probabilities and
+per-subject confidence than from another point of accuracy.

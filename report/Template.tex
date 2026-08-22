@@ -15,25 +15,19 @@ matriculation number 23726011, M.Sc.\ Artificial Intelligence.
 \maketitle
 
 \begin{abstract}
-Vertical ground reaction force (VGRF) recordings offer an inexpensive route to
-objective Parkinson's disease (PD) screening, but reported accuracies vary
-enormously because evaluation protocols differ. We classify PD versus healthy
-control (HC) from the PhysioNet gait database (100 subjects, 16 force sensors)
-using a Mamba state-space model, and we evaluate it under two protocols on
-identical data. Under a strictly subject-wise protocol, in which all windows of
-a subject stay inside one split and the configuration is selected on validation
-rather than on test, the model reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted
-F1 and $0.85$ AUC on both feet, slightly ahead of the Random Forest, SVM-RBF,
-1D-ResNet and LSTM baselines. An ablation shows the gain comes from describing
-each second by its channel statistics rather than feeding raw samples, which
-also removes a training collapse observed on two folds, while a bidirectional
-variant of the causal scan changes nothing. Re-evaluating the same features and baselines
-under the window-wise protocol that is common in the literature, where windows
-of one subject appear in training and test, raises Random Forest accuracy from
-$73$\,\% to $98$\,\% and SVM accuracy from $68$\,\% to $88$\,\% -- an
-inflation of twenty to twenty-five points caused solely by the split. We
-report the subject-wise numbers as our result and the window-wise numbers only
-as a cautionary reference.
+Published accuracies for Parkinson's disease detection from gait force
+recordings span 70--99\,\% on the PhysioNet database, a spread wider than the
+differences between the models involved. We classify patients against controls
+with a Mamba state-space model on 100 subjects, under two evaluation protocols
+on identical data. Held to subject-disjoint splits, with the configuration
+chosen on validation rather than on test, the model reaches $75 \pm 4$\,\%
+accuracy and $0.85$ AUC on both feet, slightly ahead of Random Forest,
+SVM-RBF, 1D-ResNet and LSTM baselines. The gain comes from describing each
+second by its channel statistics instead of feeding raw samples, which also
+removes a training collapse seen on two folds. Re-running the same baselines
+with window-wise splits, where windows of one subject fall on both sides,
+lifts Random Forest accuracy from 73\,\% to 98\,\%. We report the
+subject-wise numbers, and the window-wise ones only as a caution.
 \end{abstract}
 
 \begin{keywords}

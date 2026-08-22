@@ -47,10 +47,9 @@ rate, median, minimum, maximum, spectral energy, spectral entropy) for each of
 the 18 channels, i.e.\ 198 dimensions per token; and
 \textbf{(iii) stride-cycle tokens}, one token per gait cycle carrying stride,
 stance and swing time, stance ratio, normalised peak force and impulse,
-stride-time increment and double-support time for both feet. Foot contacts are
-detected by thresholding the per-foot total force at 5\,\% of its maximum, and
-strides outside 0.5--2.5\,s are rejected as implausible; the 100 subjects give
-between 34 and 166 strides each.
+stride-time increment and double-support time for both feet. Contacts are
+detected by thresholding each foot's total force at 5\,\% of its maximum, and
+strides outside 0.5--2.5\,s are discarded.
 
 \subsubsection{Materials/Instruments used}
 Models were trained on a Kaggle NVIDIA Tesla T4 (16\,GB, compute capability
@@ -105,21 +104,15 @@ influences it. Results at the fixed threshold 0.5 are also reported and differ
 by at most two points.
 
 \subsubsection{Deployment on unseen cohorts}
-Because the trained system is meant to be applied to recordings it has never
-seen, each fold's weights are exported together with the per-channel mean and
-standard deviation of \emph{that fold's training subjects} and its calibrated
-threshold. At inference a new recording is trimmed, tokenised and normalised
-with those stored statistics -- never with statistics recomputed from the new
-cohort, which would leak the target distribution into its own predictions --
-and the five fold models' window scores are averaged. We verified that the
-windows rebuilt from a raw file at inference are numerically identical to the
-training windows of the same subject, so the deployed path cannot silently
-drift from the evaluated one.
+Each fold's weights are exported with the per-channel statistics of \emph{that
+fold's training subjects} and its threshold. A new recording is normalised with
+those stored statistics -- never with statistics recomputed from the new cohort,
+which would leak its distribution into its own predictions -- and the five
+models' scores are averaged.
 
 \subsubsection{Evaluation metrics}
 We report accuracy, precision, recall and F1 (weighted by class support, so
-that recall equals accuracy by construction), together with sensitivity,
-specificity and ROC-AUC, plus confusion matrices. All values are the mean and
-standard deviation over 1000 bootstrap resamples of the pooled test
-predictions -- resampling subjects for subject-level metrics and windows for
-window-level metrics.
+recall equals accuracy by construction), with sensitivity, specificity, ROC-AUC
+and confusion matrices. All values are the mean and standard deviation over
+1000 bootstrap resamples that draw whole subjects, so the several windows
+belonging to one subject are never counted as independent evidence.

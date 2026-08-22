@@ -55,7 +55,7 @@ plt.rcParams.update({
 
 
 def fig_pipeline() -> None:
-    fig, ax = plt.subplots(figsize=(7.0, 1.62))
+    fig, ax = plt.subplots(figsize=(7.0, 1.40))
     ax.set_xlim(0, 1)
     ax.set_ylim(0, 1)
     ax.axis("off")
@@ -99,7 +99,7 @@ def fig_pipeline() -> None:
 
 
 def fig_protocols() -> None:
-    fig, axes = plt.subplots(1, 2, figsize=(7.0, 1.95))
+    fig, axes = plt.subplots(1, 2, figsize=(7.0, 1.55))
     rng = np.random.RandomState(0)
     n_subj, n_win = 12, 16
     cmap = ListedColormap([BLUE, ORANGE])
@@ -110,12 +110,14 @@ def fig_protocols() -> None:
             grid = (rng.rand(n_subj, n_win) < 0.2).astype(float)
         else:
             grid[[3, 8]] = 1.0
-        ax.imshow(grid, cmap=cmap, aspect="auto", vmin=0, vmax=1, interpolation="nearest")
-        # thin surface gaps between cells, so identity is not colour-alone at a glance
-        for k in range(1, n_win):
-            ax.axvline(k - 0.5, color="white", linewidth=0.7)
-        for k in range(1, n_subj):
-            ax.axhline(k - 0.5, color="white", linewidth=0.7)
+        # Drawn as rectangles rather than imshow: an image would be rasterised
+        # into the PDF at whatever dpi matplotlib picks, and IEEE requires
+        # >= 300 dpi for raster art. Rectangles stay vector at any zoom.
+        for i in range(n_subj):
+            for j in range(n_win):
+                ax.add_patch(plt.Rectangle((j + 0.06, i + 0.06), 0.88, 0.88, linewidth=0,
+                                           facecolor=ORANGE if grid[i, j] else BLUE))
+        ax.set_xlim(0, n_win); ax.set_ylim(n_subj, 0)
         ax.set_xticks([]); ax.set_yticks([])
         for spine in ax.spines.values():
             spine.set_visible(False)
@@ -151,7 +153,7 @@ def fig_results(mamba: dict, base: dict) -> None:
     feet = ["left", "right", "both"]
     colors = {"left": BLUE, "right": ORANGE, "both": AQUA}
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.35),
+    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.05),
                                    gridspec_kw={"width_ratios": [2.35, 1]})
 
     width, xs = 0.26, np.arange(len(models))
@@ -230,19 +232,20 @@ def fig_results(mamba: dict, base: dict) -> None:
 def fig_confusion(mamba: dict) -> None:
     """Counts are a magnitude -> one hue, light to dark (never categorical)."""
     ramp = LinearSegmentedColormap.from_list("blues", ["#f2f6fc", BLUE])
-    fig, axes = plt.subplots(1, 3, figsize=(7.0, 2.12))
+    fig, axes = plt.subplots(1, 3, figsize=(7.0, 1.78))
 
     for ax, foot in zip(axes, ("left", "right", "both")):
         block = mamba["results"][foot]["subject_mean_prob"]
         c = block["confusion"]
         cm = np.array([[c["tn"], c["fp"]], [c["fn"], c["tp"]]])
-        ax.imshow(cm, cmap=ramp, vmin=0, vmax=50, interpolation="nearest")
+        # Cells as rectangles, not imshow, so the figure stays fully vector.
         for i in range(2):
             for j in range(2):
+                ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, linewidth=1.4,
+                                           edgecolor="white", facecolor=ramp(cm[i, j] / 50)))
                 ax.text(j, i, int(cm[i, j]), ha="center", va="center", fontsize=14,
                         fontweight="bold", color="white" if cm[i, j] > 27 else INK)
-                ax.add_patch(plt.Rectangle((j - 0.5, i - 0.5), 1, 1, fill=False,
-                                           edgecolor="white", linewidth=1.4))
+        ax.set_xlim(-0.5, 1.5); ax.set_ylim(1.5, -0.5)
         acc = block["point"]["accuracy"] * 100
         sen = block["point"]["sensitivity"] * 100
         spe = block["point"]["specificity"] * 100

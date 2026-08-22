@@ -11,40 +11,19 @@ covering four groups of experiments: the input representation, the architecture,
 the foot configuration, and the evaluation protocol.
 
 \subsection{Experiment 1: what the network is fed}
-Table~\ref{tab:tokens} compares the input representations at subject level on
-both feet. Raw signals were not merely weaker but unstable. On folds~1 and~4 the
+Raw signals were not merely weaker but unstable. On folds~1 and~4 the
 validation AUC never left the neighbourhood of chance ($0.53$ and $0.54$) while
 folds~2, 3 and~5 exceeded $0.92$ with the same code and hyper-parameter grid.
 Longer windows (30\,s, 60\,s), restarts with fresh seeds and a larger encoder
 all failed to repair it. Amplitude-statistic tokens fixed the problem outright:
-the weakest fold rose to $0.75$ validation AUC and accuracy improved by seven
-points. Stride-cycle tokens were the weakest input on their own, and fusing them
+the weakest fold rose to $0.75$ validation AUC and subject-level accuracy went
+from 69\,\% to 80\,\% on both feet, against 65\,\% for raw 60\,s windows and
+66\,\% for stride-cycle tokens. Stride-cycle tokens were the weakest input on
+their own, and fusing them
 with the amplitude tokens did not beat the amplitude tokens alone, even though
 the two families are complementary at subject level in a Random Forest (AUC
 $0.79$, $0.83$ and $0.86$ for stride, amplitude and both).
 
-\begin{table}[t]
-  \centering
-  \caption{Input representation versus subject-level accuracy (both feet,
-  subject-wise protocol). Each row is the best configuration we found for that
-  representation, so the comparison is between representations rather than
-  between tuned models. ``Worst fold'' is the lowest validation ROC-AUC across
-  the five folds and exposes the training collapse that raw input produced and
-  that the statistic tokens removed.}
-  \label{tab:tokens}
-  \begin{tabular}{lcc}
-    \toprule
-    Input representation & Accuracy (\%) & Worst fold AUC \\
-    \midrule
-    Raw samples, 5\,s windows            & 69 & 0.53 \\
-    Raw samples, 30\,s windows           & 69 & 0.63 \\
-    Raw samples, 60\,s windows           & 65 & 0.59 \\
-    Stride-cycle tokens                  & 66 & 0.71 \\
-    Amplitude ++ stride (fused)          & 78 & 0.71 \\
-    \textbf{Amplitude statistics}        & \textbf{80} & \textbf{0.77} \\
-    \bottomrule
-  \end{tabular}
-\end{table}
 
 \subsection{Experiment 2: architecture}
 With the input fixed, encoder capacity was the factor that moved accuracy:
@@ -59,12 +38,11 @@ directions, and note that in the larger encoder the two factors are confounded
 anyway, since a bidirectional block doubles the mixer parameters.
 
 Training converged very early: the best epoch was typically between one and four
-out of thirty, which is a symptom of the small effective sample rather than of
-the schedule. We therefore kept dropout at $0.1$--$0.3$, used a three-epoch
-warm-up with cosine decay, and averaged three seeds. Stronger regularisation
-(dropout $0.5$) did not help, and neither did five seeds instead of three or
-late fusion across token families, which scored 0.72--0.77 and so stayed below
-the best single model.
+out of thirty, a symptom of the small effective sample rather than of the
+schedule. We therefore kept dropout at $0.1$--$0.3$, used a three-epoch warm-up
+with cosine decay, and averaged three seeds. Stronger regularisation (dropout
+$0.5$) did not help, and neither did five seeds instead of three or late fusion
+across token families, which stayed below the best single model.
 
 \subsection{Experiment 3: selecting a configuration without using the test set}
 \label{ssec:selection}
@@ -72,17 +50,14 @@ Forty-five configurations were trained in total. Choosing among them by pooled
 test accuracy would leak the test set into the model definition, even though
 each individual run keeps train, validation and test apart. We therefore ranked
 all configurations by their mean validation ROC-AUC across the five folds, a
-quantity that never sees test data, and report the configuration that wins on
-that criterion.
+quantity that never sees test data, and report the winner of that criterion.
 
-The two criteria agree on the important choice and disagree on the details.
-Amplitude-statistic tokens win under both, so the finding of
-Section~\ref{sec:exp} stands. The specific window length and encoder size do
-differ: validation prefers 60\,s windows with the base encoder, whereas pooled
-test accuracy prefers 30\,s windows with the large encoder. The gap between the
-two is about three accuracy points, and that gap is the amount of optimism a
-test-based search would have introduced. Table~\ref{tab:main} reports the
-validation-selected configuration.
+The two criteria agree on the choice that matters and differ on the details.
+Amplitude-statistic tokens win under both. The window length and encoder size
+do differ: validation prefers 60\,s windows with the base encoder, pooled test
+accuracy prefers 30\,s windows with the large one. The gap between them is
+about three accuracy points, which is the optimism a test-based search would
+have introduced.
 
 \subsection{Experiment 4: comparison with the baselines}
 Table~\ref{tab:main} lists all models under the subject-wise protocol with
@@ -110,6 +85,7 @@ confusion matrices.
   Precision, recall and F1 are weighted by class support, so recall equals
   accuracy by construction. PD is the positive class.}
   \label{tab:main}
+  \small
   \setlength{\tabcolsep}{3.2pt}
   \begin{tabular}{llccccc}
     \toprule
@@ -163,42 +139,15 @@ confusion matrices.
 \label{ssec:protocols}
 To measure the influence of the split unit we repeated the evaluation with
 windows -- not subjects -- assigned at random to the 60/20/20 splits, leaving
-the data, features, models, metrics and code untouched
-(Figure~\ref{fig:protocols}). Table~\ref{tab:protocols} contrasts the two for
-the classical baselines, which are cheap to retrain. Accuracy rises by twenty
-points or more and the Random Forest reaches 98\,\%. A per-subject decision has
-no meaning under this protocol, since a subject's windows are spread across
-training and test, so only window-level numbers can be quoted. These numbers
-measure how well a model recognises individuals it has already seen, not whether
-it detects Parkinson's disease in a new patient, and we give them purely as a
-reference point for reading the literature.
+the data, features, models, metrics and code untouched, and re-trained the two classical baselines, which
+are cheap to fit. Accuracy rises by twenty points or more: the Random Forest
+goes from 73\,\% to 98\,\% and the SVM-RBF from 68\,\% to 88\,\%, as
+Figure~\ref{fig:results}(b) shows. A per-subject decision has no meaning under
+this protocol, since a subject's windows are spread across training and test,
+so only window-level numbers can be quoted. These numbers measure how well a
+model recognises individuals it has already seen, not whether it detects
+Parkinson's disease in a new patient, and we give them purely as a reference
+point for reading the literature. It is worth noting that the SVM-RBF figure of
+88\,\% is close to accuracies frequently reported for this database.
 
-\begin{figure}[t]
-  \centering
-  \includegraphics[width=\columnwidth]{figures/fig2_protocols}
-  \caption{The two evaluation protocols. Each row is a subject and each cell one
-  window. (a) Subject-wise: whole subjects are held out, so nothing about a test
-  subject appears in training. (b) Window-wise: test windows are drawn at
-  random, so almost every test window has a near-duplicate neighbour from the
-  same recording in the training set.}
-  \label{fig:protocols}
-\end{figure}
 
-\begin{table}[t]
-  \centering
-  \caption{Effect of the split unit on both feet with everything else held
-  fixed. Subject-wise values are subject-level; window-wise values are
-  window-level, because per-subject decisions do not exist once a subject's
-  windows are split across training and test. The right-hand column is a
-  cautionary reference and must not be compared against subject-wise results
-  from the literature.}
-  \label{tab:protocols}
-  \begin{tabular}{lcc}
-    \toprule
-    Model & Subject-wise (\%) & Window-wise, leaky (\%) \\
-    \midrule
-    SVM-RBF        & 68 & 88 \\
-    Random Forest  & 73 & 98 \\
-    \bottomrule
-  \end{tabular}
-\end{table}

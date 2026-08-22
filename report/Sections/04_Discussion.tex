@@ -9,65 +9,48 @@ signals. The two effects that did move the numbers unambiguously were not
 architectural at all: how the signal is presented to the network, and how the
 data is split.
 
-The failure with raw input was what made the first point concrete. On folds~1
-and~4 training settled at a validation AUC of about $0.53$, while the same code
-on folds~2, 3 and~5 passed $0.92$. We first assumed a bug, then an optimisation
-problem, and tried longer windows, restarts with different seeds, warm-up,
-cosine decay and a larger encoder. None of them helped. What helped was
-replacing the 500 raw samples of a window by eleven statistics per channel per
-second. With 60 training subjects, a network reading raw force traces has to
-discover both what a gait cycle looks like and which of its properties separate
-patients from controls; the statistics supply the first half of that problem,
-and the sequence model is left to learn how the descriptors evolve. The
-assignment permits either raw signals or feature-vector sequences, so this is a
-legitimate design choice rather than a workaround.
+The failure with raw input made the first point concrete. On folds~1 and~4
+training settled at a validation AUC of about $0.53$ while the same code on
+folds~2, 3 and~5 passed $0.92$. We first assumed a bug, then an optimisation
+problem, and tried longer windows, fresh seeds, warm-up, cosine decay and a
+larger encoder; none helped. What helped was replacing the 500 raw samples of a
+window by eleven statistics per channel per second. With 60 training subjects a
+network reading raw traces must discover both what a gait cycle looks like and
+which of its properties separate patients from controls; the statistics supply
+the first half, leaving the sequence model to learn how the descriptors evolve.
 
-The bidirectional block was our other architectural idea, and it did not
-survive its own ablation. A causal scan gives the first tokens of a window
-almost no context, which ought to hurt when the whole window is available at
-inference. Run at matched size and matched input, the two variants landed on
-the same accuracy and the same AUC to three decimals. Mean-pooling is the
-likely explanation: it already aggregates across the window, so the late
-tokens of a causal scan can carry the evidence the classifier needs, and the
-reverse pass adds parameters without adding information. We report it as a
-negative result rather than a harmful one.
+The bidirectional block was our other architectural idea and it did not survive
+its own ablation. A causal scan gives the first tokens of a window almost no
+context, which ought to hurt when the whole window is available at inference.
+Run at matched size and input, the two variants landed on the same accuracy and
+the same AUC to three decimals. Mean-pooling is the likely explanation: it
+already aggregates across the window, so the late tokens of a causal scan can
+carry the evidence the classifier needs.
 
 The protocol comparison in Section~\ref{ssec:protocols} has a mechanical
 explanation. Windows cut one second apart from the same recording are close to
-duplicates of one another, and they share sensor placement, body mass and an
-individual gait signature. Split them at random and most test windows have a
-near neighbour in the training set, so a classifier can identify the person and
-recall the label. The Random Forest makes the size of that shortcut obvious:
-73\,\% when subjects are held out, 98\,\% when only windows are. The SVM-RBF
-figure under the same leaky split, 88\,\%, is close to accuracies frequently
-quoted for this database, which is at least suggestive about how some of them
-were obtained.
+duplicates, and they share sensor placement, body mass and an individual gait
+signature. Split them at random and most test windows have a near neighbour in
+the training set, so a classifier can identify the person and recall the label.
+The Random Forest makes the size of that shortcut obvious: 73\,\% when subjects
+are held out, 98\,\% when only windows are. The SVM-RBF figure under the same
+split, 88\,\%, is close to accuracies frequently quoted for this database.
 
-That is also our reading of the gap to the literature. Our subject-wise results
-sit in the 70--80\,\% band rather than above 90\,\%, and we do not think this
-reflects a weaker method: the leaky column of Table~\ref{tab:protocols}
-reproduces the high numbers with the same features and the same code. Work that
-does enforce subject-disjoint evaluation on this database reports values
-compatible with ours.
+This is also our reading of the gap to the literature. Our results sit in the
+70--80\,\% band rather than above 90\,\%, and we do not think that reflects a
+weaker method: Figure~\ref{fig:results}(b) reproduces the high numbers with the
+same features and the same code.
 
-Two further caveats belong here. First, the configuration space we searched was
-large -- forty-five configurations across token type, window length, encoder
-size, regularisation and seed count -- and comparing them on pooled test
-accuracy would make the reported number optimistic. Section~\ref{ssec:selection}
-therefore selects the configuration by validation AUC alone; the difference
-between the two criteria is about three accuracy points, which is worth knowing
-when interpreting any single number in this report. Second, 100 subjects is
-simply few: one subject is one accuracy point, and the $\pm 4$ bootstrap spread
-is wide enough that most of our per-configuration differences are not
-individually significant.
+Two caveats belong here. We searched forty-five configurations, and comparing
+them on pooled test accuracy would make the reported number optimistic, which
+is why Section~\ref{ssec:selection} selects on validation AUC at a cost of
+about three points. And 100 subjects is few: one subject is one accuracy point,
+and the $\pm 4$ spread leaves most per-configuration differences insignificant.
 
-Beyond sample size, three limitations are worth naming. Only the normal-walk
-recordings were used, so the dual-task recordings that often expose parkinsonian
-gait more clearly remain unexploited. Stride detection relies on a fixed force
-threshold, which is adequate for this cohort but would need revisiting for
-severely impaired gait. And the stride-cycle tokens, which encode exactly the
-timing variability the clinical literature emphasises, were the weakest input on
-their own (66\,\%) even though the same features are complementary to the
-amplitude statistics in a subject-level Random Forest (AUC $0.79$, $0.83$ and
-$0.86$ for stride, amplitude and both). We take that as evidence that our fusion
-of the two token families, not the features themselves, is what fell short.
+Three limitations remain. Only the normal-walk recordings were used, leaving
+the dual-task ones unexploited. Stride detection relies on a fixed force
+threshold, adequate here but in need of revisiting for severely impaired gait.
+And the stride-cycle tokens, which encode exactly the timing variability the
+clinical literature emphasises, were the weakest input on their own (66\,\%)
+although the same features complement the amplitude statistics in a
+subject-level Random Forest -- a shortcoming of our fusion, not of the features.
