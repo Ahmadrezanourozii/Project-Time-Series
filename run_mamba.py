@@ -176,6 +176,7 @@ def train_config(
     noise_std: float,
     channel_dropout: float,
     min_epochs: int = 0,
+    balance_subjects: bool = False,
 ) -> tuple[nn.Module, int, float, int]:
     """Train one config; returns (model, best_epoch, best_val_auc, batch_size_used).
 
@@ -187,7 +188,7 @@ def train_config(
             return _train_once(
                 build_fn, train_split, val_split, device, seed, max_epochs, patience,
                 lr, batch_size, accum_steps, use_amp, cosine, noise_std, channel_dropout,
-                min_epochs,
+                min_epochs, balance_subjects,
             )
         except torch.cuda.OutOfMemoryError:
             torch.cuda.empty_cache()
@@ -201,7 +202,7 @@ def train_config(
 def _train_once(
     build_fn, train_split, val_split, device, seed, max_epochs, patience,
     lr, batch_size, accum_steps, use_amp, cosine, noise_std, channel_dropout,
-    min_epochs=0,
+    min_epochs=0, balance_subjects=False,
 ):
     set_all_seeds(seed)
     generator = torch.Generator().manual_seed(seed)
@@ -228,10 +229,22 @@ def _train_once(
     # RAM pressure and fork+CUDA instability on Kaggle batch sessions.
     n_train = len(train_split.y)
     effective_bs = min(batch_size, n_train)
+    sampler = None
+    if balance_subjects:
+        # Subjects contribute between 1 and 14 windows, but each counts once in
+        # the metric. Sampling windows with weight 1/(windows of that subject)
+        # makes the training objective match how the model is scored.
+        counts = pd.Series(train_split.subject_id).value_counts()
+        weights = torch.as_tensor(
+            [1.0 / counts[s] for s in train_split.subject_id], dtype=torch.double
+        )
+        sampler = torch.utils.data.WeightedRandomSampler(weights, num_samples=n_train, replacement=True,
+                                                         generator=generator)
     loader = DataLoader(
         WindowDataset(train_split),
         batch_size=effective_bs,
-        shuffle=True,
+        shuffle=sampler is None,
+        sampler=sampler,
         num_workers=0,
         pin_memory=device.type == "cuda",
         generator=generator,
@@ -362,6 +375,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
             build_fn(dropout), splits["train"], splits["validation"], device, base_seed,
             args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
             args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
+            args.balance_subjects,
         )
         print(
             f"  fold {fold_idx} {foot}: dropout={dropout} lr={lr:g} -> val AUC {val_auc:.4f} "
@@ -387,6 +401,7 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
             build_fn(dropout), splits["train"], splits["validation"], device, retry_seed,
             args.epochs, args.patience, lr, batch_size, args.accum_steps, use_amp,
             args.cosine, args.aug_noise, args.aug_channel_dropout, args.min_epochs,
+            args.balance_subjects,
         )
         print(
             f"  fold {fold_idx} {foot}: collapse retry {retries} (seed {retry_seed}) "
@@ -480,9 +495,14 @@ def run_fold_mamba(fold_idx: int, foot: str, table: RawWindowTable, args, model_
 # Reporting
 
 
-def metrics_block(result: FoldResult, n_boot: int) -> dict:
+def metrics_block(result: FoldResult, n_boot: int, cluster_by_subject: bool = False) -> dict:
+    """cluster_by_subject: set for window-level results, where several rows
+    belong to the same subject and must be resampled together."""
     point = compute_point_metrics(result.y_true, result.y_pred, result.y_score)
-    boot = summarize_bootstrap(bootstrap_metrics(result.y_true, result.y_pred, result.y_score, n_boot=n_boot))
+    groups = result.subject_id if cluster_by_subject else None
+    boot = summarize_bootstrap(
+        bootstrap_metrics(result.y_true, result.y_pred, result.y_score, n_boot=n_boot, groups=groups)
+    )
     tp, fp, tn, fn = confusion_counts(result.y_true, result.y_pred)
     return {
         "point": {k: (None if np.isnan(v) else round(float(v), 4)) for k, v in point.items()},
@@ -589,6 +609,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--aug-channel-dropout", type=float, default=0.0)
     parser.add_argument("--no-amp", dest="amp", action="store_false")
     parser.add_argument("--grad-checkpoint", action="store_true")
+    parser.add_argument("--balance-subjects", action="store_true",
+                        help="Sample windows so every subject contributes equally")
     parser.add_argument("--n-boot", type=int, default=1000)
     parser.add_argument("--smoke", action="store_true", help="Tiny balanced subset, fold 1, 2 epochs")
     parser.add_argument("--require-cuda-kernels", action="store_true")
@@ -674,7 +696,10 @@ def main() -> None:
             if len(counts) != 100:
                 raise RuntimeError(f"Pooled test covers {len(counts)} subjects, expected 100")
 
-        blocks = {"window": metrics_block(pooled, args.n_boot), "best_params_per_fold": pooled.best_params}
+        blocks = {
+            "window": metrics_block(pooled, args.n_boot, cluster_by_subject=True),
+            "best_params_per_fold": pooled.best_params,
+        }
         if subject_wise:
             # Under the leaky window split a subject's windows are spread over
             # train and test, so a per-subject decision is not meaningful.

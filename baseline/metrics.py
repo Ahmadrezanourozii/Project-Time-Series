@@ -78,8 +78,16 @@ def bootstrap_metrics(
     y_score: np.ndarray,
     n_boot: int = N_BOOTSTRAP,
     random_state: int = RANDOM_STATE,
+    groups: np.ndarray | None = None,
 ) -> pd.DataFrame:
-    """Bootstrap (resample with replacement) Accuracy/Sensitivity/Specificity/AUC.
+    """Bootstrap (resample with replacement) the metric set.
+
+    `groups` must be given whenever the rows are not independent -- for
+    window-level metrics it is the subject id of each window. Windows of one
+    subject are near-duplicates, so resampling rows independently treats them
+    as independent evidence and halves the apparent uncertainty; resampling
+    whole subjects instead keeps the correlation intact. Subject-level metrics
+    have one row per subject and need no grouping.
 
     Resamples that lack both classes (metrics undefined) are redrawn rather
     than counted, so exactly n_boot valid rows are always returned.
@@ -90,12 +98,22 @@ def bootstrap_metrics(
 
     rng = np.random.RandomState(random_state)
     n = len(y_true)
+    cluster_index = None
+    if groups is not None:
+        groups = np.asarray(groups)
+        unique = np.unique(groups)
+        cluster_index = {g: np.flatnonzero(groups == g) for g in unique}
+
     rows = []
     attempts = 0
     max_attempts = n_boot * 20
     while len(rows) < n_boot and attempts < max_attempts:
         attempts += 1
-        idx = rng.randint(0, n, size=n)
+        if cluster_index is None:
+            idx = rng.randint(0, n, size=n)
+        else:
+            picked = rng.choice(unique, size=len(unique), replace=True)
+            idx = np.concatenate([cluster_index[g] for g in picked])
         yt, yp, ys = y_true[idx], y_pred[idx], y_score[idx]
         if len(np.unique(yt)) < 2:
             continue
