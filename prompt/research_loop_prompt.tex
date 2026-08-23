@@ -1,0 +1,326 @@
+\documentclass[11pt,a4paper]{article}
+\usepackage[margin=2.1cm]{geometry}
+\usepackage{parskip}
+\usepackage{xcolor}
+\usepackage{titlesec}
+\usepackage{enumitem}
+\usepackage{fancyhdr}
+\usepackage[colorlinks=true,linkcolor=black,urlcolor=black]{hyperref}
+\usepackage[breakable]{tcolorbox}
+
+\definecolor{ink}{HTML}{1C1C1A}
+\definecolor{accent}{HTML}{2A78D6}
+\definecolor{soft}{HTML}{5A5A55}
+\definecolor{rule}{HTML}{D5D5CF}
+
+\color{ink}
+\titleformat{\section}{\large\bfseries\color{accent}}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing{\section}{0pt}{14pt}{6pt}
+\setlist[itemize]{leftmargin=1.2em,itemsep=2pt,topsep=3pt}
+
+\pagestyle{fancy}\fancyhf{}
+\fancyhead[L]{\footnotesize\color{soft}Research-loop prompt for a new ML project}
+\fancyhead[R]{\footnotesize\color{soft}\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+\newtcolorbox{promptbox}{colback=white,colframe=rule,boxrule=0.8pt,
+  left=9pt,right=9pt,top=9pt,bottom=9pt,breakable,
+  before upper={\setlength{\parskip}{5pt}}}
+
+\begin{document}
+
+\begin{center}
+{\LARGE\bfseries A prompt for running a machine-learning project}\\[3pt]
+{\large\bfseries with GitHub, Kaggle GPU and a self-correcting research loop}\\[8pt]
+{\color{soft}\small Distilled from a completed project: gait-based Parkinson's
+classification, 20 GPU sessions, 48 configurations.\\
+Written so the next project repeats the method and not the mistakes.}
+\end{center}
+
+\vspace{4pt}
+\hrule
+\vspace{10pt}
+
+\section{How to use this}
+
+Paste Part~A as your first message in a new session, after filling in the four
+placeholders. Parts~B and~C are the standing rules; paste them too, or save them
+as \texttt{CLAUDE.md} in the project folder so they load automatically every
+session. Part~D is what to say when you want the loop to continue.
+
+\section{Part A --- the opening message}
+
+\begin{promptbox}
+\small
+I am starting a new machine-learning project and I want you to run it as a
+senior researcher would, not as a code monkey. Read this whole message before
+touching anything.
+
+\vspace{3pt}\textbf{THE PROBLEM}
+
+$\bullet$ Goal: \texttt{<what must be predicted, and why it matters>}\\
+$\bullet$ Data: \texttt{<what I have, how much, where it lives, its size>}\\
+$\bullet$ Constraint: \texttt{<required model family, deadline, or "none">}\\
+$\bullet$ Success looks like: \texttt{<the decision this model should support>}
+
+\vspace{3pt}\textbf{THE INFRASTRUCTURE I WANT}
+
+Set this up first, before any modelling:
+
+1. A GitHub repository for the code. You commit and push after every meaningful
+change, with messages that say why, not what. Data and outputs stay out of git.
+
+2. A Kaggle notebook that pulls the latest commit and trains on the GPU. I want
+to reproduce any result by pressing Run All. Put the data in a private Kaggle
+dataset; keep the raw data out of the repository.
+
+3. Every run writes a structured \texttt{results.json} --- metrics, the exact
+configuration, environment versions, runtime --- plus its full log. Both get
+archived under version control of some kind, so a run from three weeks ago is
+still readable.
+
+4. After each run you fetch the log and the JSON back, parse them, and tell me
+what happened in plain language: what improved, what did not, and what the
+numbers actually license you to claim. Then you decide the next experiment from
+that evidence and push the next iteration.
+
+Ask me for the Kaggle token when you need it; I will paste a fresh one. Never
+commit it.
+
+\vspace{3pt}\textbf{HOW I WANT YOU TO WORK}
+
+Plan like someone with a doctorate in machine learning. That means: state a
+hypothesis before each experiment, say what result would falsify it, run the
+cheapest test that could falsify it, and update. Do not run a grid because a
+grid is available.
+
+Before spending GPU time on an idea, look for a five-minute version of it that
+runs locally. A quick probe on aggregated features usually predicts whether a
+representation carries signal, and it costs nothing.
+
+When you stall --- roughly three consecutive experiments with no improvement
+that survives a significance test --- stop tuning and go read. Search for recent
+peer-reviewed work on this exact problem and on the methods you are using.
+Bring me a short summary of what those papers do differently, and a concrete
+proposal for what to adopt. If a paper is paywalled, give me the title, authors,
+year and DOI and I will fetch the PDF for you.
+
+Tell me plainly when you hit a ceiling, and diagnose which kind it is: not
+enough data, not enough signal in the features, a flaw in how the data was
+collected or split, or a genuine limit of the method. Each has a different
+remedy and only one of them is "train longer".
+
+\vspace{3pt}\textbf{WHAT I DO NOT WANT}
+
+Do not report a number you have not computed. Do not present a result whose
+difference from the baseline is inside the noise as an improvement. Do not
+quietly change the evaluation protocol to make a number look better. If an
+experiment fails, tell me it failed and what you learned; a negative result that
+saves me a week is worth more than an optimistic one that costs me a month.
+
+Start by proposing the evaluation protocol and the infrastructure. Do not train
+anything until I have agreed to the protocol.
+\end{promptbox}
+
+\section{Part B --- the standing scientific rules}
+
+\begin{promptbox}
+\small
+These rules hold for the whole project. They exist because each one has already
+cost someone a wasted month.
+
+\vspace{3pt}\textbf{FIX THE EVALUATION PROTOCOL BEFORE THE FIRST EXPERIMENT}
+
+Decide the unit of independence --- the patient, the subject, the session, the
+device, the site --- and split on it. Never split on rows, windows or augmented
+copies. Two windows cut a second apart from one recording are near duplicates:
+put one in train and one in test and the model will recognise the individual
+instead of the phenomenon, and the score will look wonderful.
+
+Quantify this once, early, and keep the number. Re-run the same pipeline with a
+naive random-row split and report both. In my last project the same Random
+Forest scored 73\,\% under subject-wise splits and 98\,\% under row-wise splits.
+That single comparison explained a 30-point spread in the published literature.
+
+Write the split assignment to a file and load it from there, so every model in
+the project sees identical folds.
+
+\vspace{3pt}\textbf{FIT NOTHING ON DATA YOU WILL EVALUATE ON}
+
+Normalisation statistics, feature selection, imputation values, class weights,
+decision thresholds: all estimated on training data only, then applied
+unchanged. At deployment, ship the training statistics alongside the weights and
+apply those --- never statistics recomputed from the new cohort.
+
+\vspace{3pt}\textbf{SELECT ON VALIDATION, NEVER ON TEST}
+
+This includes the choice between experiments, not just hyper-parameters inside
+one run. If you compare forty configurations by their test score and report the
+best, the test set has entered the model definition and the number is
+optimistic. Rank configurations by validation performance and report the winner
+of that ranking.
+
+Measure the cost of getting this wrong and report it. In my last project,
+choosing on test gave 78\,\%, choosing on validation gave 75\,\%; those three
+points were pure optimism.
+
+\vspace{3pt}\textbf{ALWAYS BUILD A TRIVIAL BASELINE FIRST}
+
+Majority class, one hand-computed feature, a linear model on aggregates. If the
+deep model does not clearly beat it, that is the headline finding and you should
+say so. In my last project a single duty-cycle scalar matched a tuned
+state-space model to within noise --- which told us the signal was saturated,
+not that the architecture was wrong. We would have wasted weeks without it.
+
+\vspace{3pt}\textbf{REPORT UNCERTAINTY, AND RESPECT IT}
+
+Every number gets a bootstrap interval. If the rows are correlated --- several
+windows per subject --- resample whole groups, not rows; resampling rows treats
+duplicates as independent evidence and halves the apparent uncertainty.
+
+To compare two models, use a paired bootstrap over the same units and report the
+interval of the difference. If it contains zero, say the models are
+indistinguishable. Do not rank them anyway.
+
+Know the resolution of your experiment. With one hundred subjects the 95\,\%
+interval on an accuracy near 0.75 is roughly $\pm 8$ points, so a
+three-point difference is unmeasurable no matter how many seeds you average.
+
+\vspace{3pt}\textbf{VERIFY, DO NOT ASSUME}
+
+Check invariants empirically rather than by reading code. Reconstruct a
+normalised test split by hand from training statistics and compare it against
+what the pipeline produced. Confirm the same split is \emph{not} reproducible
+from all-data statistics. Recompute one sample's features in isolation and check
+they match the batch-built cache byte for byte. Assert that no unit appears in
+two splits. Keep these as a script and run it before every submission.
+
+\vspace{3pt}\textbf{REPRODUCE ANY NUMBER BEFORE ACTING ON IT}
+
+This applies to numbers from papers, from me, and from any expert or reviewer
+you consult. In my last project a reviewing agent reported that fusing two
+models reached 0.898 AUC; reproducing it gave 0.856 against a 0.854 baseline ---
+nothing. The same review claimed a missing feature family was the key lever; a
+five-minute probe showed it added nothing. Both would have cost GPU hours and a
+wrong conclusion in the report.
+\end{promptbox}
+
+\section{Part C --- the loop, and what to do when it stalls}
+
+\begin{promptbox}
+\small
+\vspace{3pt}\textbf{THE ITERATION}
+
+Each cycle is: hypothesis $\rightarrow$ cheapest falsifying test $\rightarrow$
+run $\rightarrow$ fetch log $\rightarrow$ analyse $\rightarrow$ decide. Report to
+me after each cycle in a few sentences: what you expected, what happened,
+whether the difference is significant, and what you will try next.
+
+Keep a running knowledge-base file in the repository --- call it
+\texttt{CLAUDE.md} --- and update it as you go, not at the end. It should hold:
+the current result, the protocol, every configuration tried with its numbers,
+every bug hit and its fix, the timings, and a section named "things not to redo".
+Write it for a stranger, or for me in a year. When a session ends, that file is
+the only thing that survives.
+
+Archive every run's \texttt{results.json} and log permanently, outside temporary
+directories. You will want to compare against run 7 when you are on run 30.
+
+\vspace{3pt}\textbf{WHEN THREE EXPERIMENTS IN A ROW FAIL TO IMPROVE ANYTHING}
+
+Stop tuning. In order:
+
+1. Re-examine the data, not the model. Plot the classes. Compute what the
+strongest single feature achieves. Check whether some nuisance variable ---
+site, device, study, acquisition date, sequence length --- is correlated with
+the label and with the split. In my last project the three sub-studies had
+different class rates and the prescribed folds were not stratified by study, so
+"which study" was a shortcut that helped in training and scored below chance at
+test. That explained the fold-to-fold collapses that no optimiser setting fixed.
+
+2. Go to the literature. Find recent peer-reviewed work on this problem and on
+the method. Read for what they do differently in the parts you have been
+ignoring: preprocessing, representation, the evaluation protocol, the cohort
+size. Summarise for me: what they claim, under what protocol, and whether the
+comparison to our setup is fair. Papers reporting far higher numbers very often
+use a weaker split --- check before you believe them.
+
+3. Propose the two or three most promising adaptations, with a cheap test for
+each and a prediction of what it should produce. If a paper is behind a
+paywall, send me the title, authors, year and DOI and I will get it for you.
+
+\vspace{3pt}\textbf{DIAGNOSING THE CEILING}
+
+When you believe you have reached the limit, say so plainly and support it. The
+diagnosis matters more than the number, because each cause has a different
+remedy:
+
+$\bullet$ \emph{Sample size}: several very different model families land in the
+same narrow band, and no difference between them is significant. Remedy: more
+units, not more capacity. Estimate how many you would need for the effect you
+want to detect, and tell me.
+
+$\bullet$ \emph{Signal saturation}: a trivial feature reaches nearly the same
+score as the deep model. Remedy: better measurements or richer features, not a
+bigger model.
+
+$\bullet$ \emph{Protocol or cohort flaw}: performance varies wildly across folds
+in a way tied to some grouping. Remedy: fix the split or acknowledge the
+confound; often it cannot be fixed and must be reported.
+
+$\bullet$ \emph{Optimisation}: training diverges or collapses, best epoch is
+epoch one, loss curves look pathological. This is the only case where the
+remedy is in the training loop.
+
+Tell me which one it is, what evidence supports it, and what the honest next
+research step would be. If the answer is "we need more data", say it --- and
+tell me what data, how much, and where it might come from.
+
+\vspace{3pt}\textbf{DELIVERABLES}
+
+Keep the write-up generated from the run outputs, never typed by hand. One
+script should regenerate every table and figure from the archived JSON, so the
+document cannot drift from the experiments. Numbers appearing in two places must
+be produced by the same code path, and it is worth writing a check that compares
+them.
+\end{promptbox}
+
+\section{Part D --- what to say to continue the loop}
+
+\begin{promptbox}
+\small
+Continue the loop. Fetch the last run's log and results, analyse them, tell me
+whether the change was significant under a paired bootstrap, and decide the next
+experiment from the evidence. If we have now had three cycles without a
+significant improvement, switch to the literature step and come back with
+proposals rather than another run.
+\end{promptbox}
+
+\section{Part E --- the four placeholders in Part A}
+
+\begin{itemize}
+\item \textbf{Goal} --- what is predicted and what decision it supports. "Detect
+X from Y so that a clinician can prioritise a scan" is useful; "get high
+accuracy" is not.
+\item \textbf{Data} --- how many independent units (patients, subjects, sites),
+how much per unit, the format, and where the files are. State the natural unit
+of independence explicitly; it determines the split.
+\item \textbf{Constraint} --- a required model family, a deadline, a compute
+budget, a report template. Write "none" if there is none.
+\item \textbf{Success} --- the target if you have one, and whether a modest
+honest number beats an impressive fragile one. Say which, because it changes
+every decision that follows.
+\end{itemize}
+
+\vspace{6pt}
+\hrule
+\vspace{6pt}
+{\footnotesize\color{soft}
+The lessons in Parts B and C are not hypothetical: each corresponds to something
+that went wrong, was caught, and was fixed in a real project. The most expensive
+were selecting configurations on the test set, an uncertainty interval that was
+twice too narrow because correlated rows were resampled independently, and two
+plausible suggestions from an expert reviewer that evaporated on reproduction.}
+
+\end{document}
