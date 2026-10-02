@@ -9,7 +9,7 @@ slots below pass the colour-vision-deficiency and lightness checks of
 Writes to outputs/mamba/final/figures_report/:
   fig1_pipeline.pdf   raw VGRF -> tokens -> Mamba -> per-subject decision
   fig2_protocols.pdf  the two evaluation protocols side by side
-  fig3_results.pdf    accuracy per model and foot, and the protocol effect
+  fig3_results.pdf    the protocol effect (single column, drawn at 1:1)
   fig4_confusion.pdf  confusion matrices of the final model
 """
 
@@ -55,15 +55,15 @@ plt.rcParams.update({
 
 
 def fig_pipeline() -> None:
-    fig, ax = plt.subplots(figsize=(7.0, 1.40))
+    fig, ax = plt.subplots(figsize=(7.0, 0.70))
     ax.set_xlim(0, 1)
-    ax.set_ylim(0, 1)
+    ax.set_ylim(0.44, 0.94)
     ax.axis("off")
 
     stages = [
         ("Raw VGRF", "18 channels, 100 Hz\n100 subjects", STAGE_FILL),
         ("Pre-processing", "drop first 5 s\nof gait initiation", STAGE_FILL),
-        ("Tokenisation", "11 statistics/channel\nper 1 s -> 60 s windows", TOKEN_FILL),
+        ("Feature extraction", "11 statistics/channel\nper 1 s -> 60 s windows", TOKEN_FILL),
         ("Mamba encoder", "state-space blocks\nmean + max pooling", STAGE_FILL),
         ("Subject decision", "mean window score\nPD / HC", TOKEN_FILL),
     ]
@@ -84,13 +84,6 @@ def fig_pipeline() -> None:
                                          arrowstyle="-|>", mutation_scale=7,
                                          linewidth=0.8, color=INK_SOFT))
 
-    ax.plot([0, 1], [0.33, 0.33], color=RULE, linewidth=0.6)
-    ax.text(0.5, 0.21, "five predefined subject-wise folds  ·  60 / 20 / 20 subjects  ·  "
-                       "no subject in more than one split",
-            ha="center", va="center", fontsize=6.8, color=INK)
-    ax.text(0.5, 0.06, "z-score fitted on training windows only   |   hyper-parameters and "
-                       "threshold chosen on validation   |   test predicted once",
-            ha="center", va="center", fontsize=6.1, color=INK_SOFT)
     fig.savefig(OUT / "fig1_pipeline.pdf", bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
 
@@ -146,45 +139,15 @@ def fig_protocols() -> None:
 # ---------------------------------------------------------------- fig 3
 
 
-def fig_results(mamba: dict, base: dict) -> None:
-    models = ["lstm", "resnet", "svm_rbf", "random_forest", "mamba"]
-    display = {"svm_rbf": "SVM-RBF", "resnet": "1D-ResNet", "lstm": "LSTM",
-               "random_forest": "Random\nForest", "mamba": "Mamba\n(ours)"}
-    feet = ["left", "right", "both"]
-    colors = {"left": BLUE, "right": ORANGE, "both": AQUA}
+def fig_results(base: dict) -> None:
+    r"""Effect of the split unit, single panel.
 
-    fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.05),
-                                   gridspec_kw={"width_ratios": [2.35, 1]})
-
-    width, xs = 0.26, np.arange(len(models))
-    for i, foot in enumerate(feet):
-        vals = []
-        for m in models:
-            if m == "mamba":
-                vals.append(mamba["results"][foot]["subject_mean_prob"]["point"]["accuracy"] * 100)
-            else:
-                vals.append(base["subject_wise"][m][foot]["subject"]["point"]["accuracy"] * 100)
-        bars = ax1.bar(xs + (i - 1) * width, vals, width * 0.9, label=foot.capitalize(),
-                       color=colors[foot], linewidth=0)
-        ax1.bar_label(bars, fmt="%.0f", fontsize=5.8, padding=1.5, color=INK_SOFT)
-
-    ax1.axhline(50, color=RULE, linewidth=0.8, linestyle=(0, (4, 3)), zorder=0)
-    ax1.text(-0.62, 50.8, "chance", fontsize=6, color=INK_SOFT, ha="left", va="bottom")
-    ax1.set_xticks(xs)
-    ax1.set_xticklabels([display[m] for m in models], fontsize=7.4, color=INK)
-    ax1.set_ylabel("Subject-level accuracy (%)", fontsize=7.6)
-    ax1.set_ylim(45, 88)
-    ax1.set_yticks([50, 60, 70, 80])
-    ax1.tick_params(labelsize=7, length=0)
-    ax1.legend(fontsize=6.8, frameon=False, ncol=3, loc="upper left", handlelength=1.1,
-               handletextpad=0.45, columnspacing=1.3, title=None)
-    ax1.set_title("(a)  Subject-wise protocol", fontsize=8.2, fontweight="bold",
-                  color=INK, loc="left", pad=6)
-    ax1.grid(axis="y", alpha=0.35, linewidth=0.5, color=RULE)
-    ax1.set_axisbelow(True)
-    for side in ("top", "right", "left"):
-        ax1.spines[side].set_visible(False)
-
+    Drawn at the final print size (\columnwidth = 244.7 pt = 3.39 in) so that
+    \includegraphics[width=\columnwidth] applies no scaling: the point sizes
+    below are the point sizes on the page, next to an 8 pt caption. The earlier
+    two-panel version was authored 7.0 in wide and squeezed to 0.48x, which is
+    what made its labels unreadable.
+    """
     pairs = [
         ("Random\nForest",
          base["subject_wise"]["random_forest"]["both"]["subject"]["point"]["accuracy"] * 100,
@@ -193,35 +156,41 @@ def fig_results(mamba: dict, base: dict) -> None:
          base["subject_wise"]["svm_rbf"]["both"]["subject"]["point"]["accuracy"] * 100,
          base["leaky_window"]["svm_rbf"]["both"]["point"]["accuracy"] * 100),
     ]
-    xs2 = np.arange(len(pairs))
-    b1 = ax2.bar(xs2 - 0.19, [p[1] for p in pairs], 0.34, label="subject-wise", color=BLUE, linewidth=0)
-    b2 = ax2.bar(xs2 + 0.19, [p[2] for p in pairs], 0.34, label="window-wise", color=ORANGE, linewidth=0)
-    ax2.bar_label(b1, fmt="%.0f", fontsize=6.2, padding=2, color=INK_SOFT)
-    ax2.bar_label(b2, fmt="%.0f", fontsize=6.2, padding=2, color=INK_SOFT)
+
+    # Width chosen so that the tight bounding box comes out at exactly
+    # \columnwidth (244.7 pt); see the docstring.
+    fig, ax = plt.subplots(figsize=(3.68, 2.30))
+
+    xs = np.arange(len(pairs))
+    b1 = ax.bar(xs - 0.19, [p[1] for p in pairs], 0.34, label="subject-wise", color=BLUE, linewidth=0)
+    b2 = ax.bar(xs + 0.19, [p[2] for p in pairs], 0.34, label="window-wise", color=ORANGE, linewidth=0)
+    ax.bar_label(b1, fmt="%.0f", fontsize=7.4, padding=2, color=INK_SOFT)
+    ax.bar_label(b2, fmt="%.0f", fontsize=7.4, padding=2, color=INK_SOFT)
     # The gap itself is the message, so state it once above each pair.
     for i, p in enumerate(pairs):
         top = max(p[1], p[2]) + 9
-        ax2.plot([i - 0.19, i - 0.19, i + 0.19, i + 0.19],
-                 [top - 2.5, top, top, top - 2.5], color=INK_SOFT, linewidth=0.6)
-        ax2.text(i, top + 1.5, f"+{p[2] - p[1]:.0f} pts", fontsize=6.6,
-                 color=INK, ha="center", fontweight="bold")
+        ax.plot([i - 0.19, i - 0.19, i + 0.19, i + 0.19],
+                [top - 2.5, top, top, top - 2.5], color=INK_SOFT, linewidth=0.6)
+        ax.text(i, top + 1.5, f"+{p[2] - p[1]:.0f} pts", fontsize=8.0,
+                color=INK, ha="center", fontweight="bold")
 
-    ax2.set_xticks(xs2)
-    ax2.set_xticklabels([p[0] for p in pairs], fontsize=7.4, color=INK)
-    ax2.set_ylim(45, 125)
-    ax2.set_yticks([50, 75, 100])
-    ax2.tick_params(labelsize=7, length=0)
-    ax2.set_ylabel("Accuracy (%)", fontsize=7.6)
-    ax2.legend(fontsize=6.8, frameon=False, loc="lower center", handlelength=1.1,
-               handletextpad=0.45, ncol=2, columnspacing=1.0, bbox_to_anchor=(0.5, -0.42))
-    ax2.set_title("(b)  Effect of the split unit", fontsize=8.2, fontweight="bold",
-                  color=INK, loc="left", pad=6)
-    ax2.grid(axis="y", alpha=0.35, linewidth=0.5, color=RULE)
-    ax2.set_axisbelow(True)
+    ax.set_xticks(xs)
+    ax.set_xticklabels([p[0] for p in pairs], fontsize=8.4, color=INK)
+    ax.set_xlim(-0.55, len(pairs) - 0.45)
+    ax.set_ylim(45, 114)
+    ax.set_yticks([50, 75, 100])
+    ax.tick_params(labelsize=8.0, length=0)
+    ax.set_ylabel("Accuracy (%)", fontsize=8.6)
+    ax.legend(fontsize=8.0, frameon=False, loc="lower center", handlelength=1.1,
+              handletextpad=0.45, ncol=2, columnspacing=1.2, bbox_to_anchor=(0.5, -0.44))
+    ax.set_title("Effect of the split unit", fontsize=9.0, fontweight="bold",
+                 color=INK, loc="left", pad=6)
+    ax.grid(axis="y", alpha=0.35, linewidth=0.5, color=RULE)
+    ax.set_axisbelow(True)
     for side in ("top", "right", "left"):
-        ax2.spines[side].set_visible(False)
+        ax.spines[side].set_visible(False)
 
-    fig.tight_layout(w_pad=1.8)
+    fig.tight_layout()
     fig.savefig(OUT / "fig3_results.pdf", bbox_inches="tight", pad_inches=0.02)
     plt.close(fig)
 
@@ -249,9 +218,13 @@ def fig_confusion(mamba: dict) -> None:
         acc = block["point"]["accuracy"] * 100
         sen = block["point"]["sensitivity"] * 100
         spe = block["point"]["specificity"] * 100
-        ax.set_title(f"{foot.capitalize()}", fontsize=8.2, fontweight="bold", color=INK, pad=5)
-        ax.text(0.5, 1.13, f"acc {acc:.0f}%  ·  sen {sen:.0f}%  ·  spe {spe:.0f}%",
-                transform=ax.transAxes, ha="center", fontsize=6.4, color=INK_SOFT)
+        # Title sits above the sub-line, not on top of it: the sub-line is
+        # anchored just clear of the axes and the title padded past its cap
+        # height, so the two never collide at any figure size.
+        ax.set_title(f"{foot.capitalize()}", fontsize=8.2, fontweight="bold", color=INK, pad=14)
+        ax.text(0.5, 1.025, f"acc {acc:.0f}%  ·  sen {sen:.0f}%  ·  spe {spe:.0f}%",
+                transform=ax.transAxes, ha="center", va="bottom",
+                fontsize=6.4, color=INK_SOFT)
         ax.set_xticks([0, 1]); ax.set_xticklabels(["HC", "PD"], fontsize=7.4)
         ax.set_yticks([0, 1]); ax.set_yticklabels(["HC", "PD"], fontsize=7.4)
         ax.set_xlabel("Predicted", fontsize=7.2)
@@ -276,7 +249,7 @@ def main() -> None:
 
     fig_pipeline()
     fig_protocols()
-    fig_results(mamba, base)
+    fig_results(base)
     fig_confusion(mamba)
     print(f"wrote {len(list(OUT.glob('*.pdf')))} figures to {OUT} (source: {primary.parent.name})")
 

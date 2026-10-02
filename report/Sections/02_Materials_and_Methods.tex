@@ -1,38 +1,65 @@
 \section{Materials \& Methods}
 \label{sec:matmeth}
 
-Figure~\ref{fig:pipeline} summarises the complete pipeline, from the raw force
+Figure~\ref{fig:pipeline} summarizes the complete pipeline, from the raw force
 recordings to the per-subject PD/HC decision.
 
 \begin{figure*}[t]
   \centering
   \includegraphics[width=\textwidth]{figures/fig1_pipeline}
-  \caption{End-to-end pipeline of the reported model. Raw VGRF recordings
-  (16 sensors plus two per-foot totals, 100\,Hz) are trimmed and converted into
-  token sequences -- one token per second holding 11 statistics for each of the
-  18 channels, grouped into 60\,s windows; the Mamba encoder scores each window
-  and a subject's window scores are averaged into one decision. Normalisation
-  statistics and every hyper-parameter are estimated on training and validation
-  data only, and each of the five subject-wise folds contributes a disjoint set
-  of test subjects.}
+  \caption{End-to-end pipeline: raw VGRF recordings become one feature vector
+  per second, grouped into 60\,s windows and scored by the Mamba encoder.}
   \label{fig:pipeline}
 \end{figure*}
 
 \subsection{Data}
 \label{ssec:data}
 We use the PhysioNet \emph{Gait in Parkinson's Disease} database
-\cite{goldberger2000physiobank}, pooling its three studies (Ga, Ju, Si). Each subject walked on level ground for about two
-minutes while eight force sensors per foot sampled at 100\,Hz; the dataset
-provides the 16 sensor channels plus the total force under each foot. Our
-subset comprises the 100 subjects with a normal-walk recording, balanced by
-design into 50 PD patients and 50 healthy controls. The course-provided
-five-fold partition assigns 60 training, 20 validation and 20 test subjects
-per fold, class-balanced, with test sets disjoint across folds so that pooling
-the five test folds covers every subject exactly once.
+\cite{goldberger2000physiobank}, pooling its three studies (Ga, Ju, Si). Each
+subject walked on level ground for about two minutes while eight force sensors
+per foot sampled at 100\,Hz; the dataset provides the 16 sensor channels plus
+the total force under each foot. Our subset comprises the 100 subjects with a
+normal-walk recording, balanced by design into 50 PD patients and 50 healthy
+controls (HC). Table~\ref{tab:cohort} summarizes it: the groups are matched on
+sex, age and body size and separate on exactly the variables the disease is
+expected to move, gait speed and the timed up-and-go test. Heights are given in
+centimeters after harmonizing the two unit conventions of the source file,
+which records 65 entries in meters and 32 in centimeters.
+
+The course-provided five-fold partition assigns 60 training, 20 validation and
+20 test subjects per fold, class-balanced, with test sets disjoint across folds
+so that pooling them covers every subject exactly once. The folds are not
+stratified by sub-study, whose PD rates differ (0.58, 0.50 and 0.43 for Ga, Ju
+and Si), a confound we return to in Section~\ref{sec:disc}.
+
+\begin{table}[t]
+  \centering
+  \caption{The 100 subjects: mean $\pm$ standard deviation, with $p$ from
+  Welch's $t$-test ($\chi^2$ for the categorical rows).}
+  \label{tab:cohort}
+  \small
+  \setlength{\tabcolsep}{3.4pt}
+  \begin{tabular}{lccc}
+    \toprule
+     & HC ($n{=}50$) & PD ($n{=}50$) & $p$ \\
+    \midrule
+    Female / male       & 25 / 25         & 25 / 25         & 1.00 \\
+    Age (years)         & 63.0 $\pm$ 8.4  & 66.5 $\pm$ 9.8  & 0.06 \\
+    Height (cm)         & 167.6 $\pm$ 8.6 & 166.3 $\pm$ 7.9 & 0.45 \\
+    Weight (kg)         & 71.9 $\pm$ 12.8 & 68.5 $\pm$ 12.0 & 0.18 \\
+    BMI (kg/m$^2$)      & 25.5 $\pm$ 3.7  & 24.7 $\pm$ 3.1  & 0.26 \\
+    Gait speed (m/s)    & 1.24 $\pm$ 0.17 & 1.02 $\pm$ 0.22 & $<$0.001 \\
+    TUAG (s)            & 9.2 $\pm$ 1.6   & 12.2 $\pm$ 5.0  & $<$0.001 \\
+    Hoehn \& Yahr       & ---             & 2.3 $\pm$ 0.4   & --- \\
+    UPDRS (total)       & ---             & 29.5 $\pm$ 11.1 & --- \\
+    Study Ga / Ju / Si  & 13 / 16 / 21    & 18 / 16 / 16    & 0.48 \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsubsection{Pre-processing}
 The first five seconds of each recording are discarded to remove gait
-initiation. Each window inherits its subject's label, and channel normalisation
+initiation. Each window inherits its subject's label, and channel normalization
 is a per-channel z-score whose mean and standard deviation are computed over
 the training windows of the current fold only, then applied unchanged to
 validation and test.
@@ -40,26 +67,44 @@ validation and test.
 Three input representations were compared, each with its own segmentation.
 \textbf{(i) Raw samples}: the recording is cut into 5\,s windows with a 1\,s
 step, giving a $18 \times 500$ matrix per window and 10\,407 windows in total,
-between 35 and 254 per subject. \textbf{(ii) Amplitude-statistic tokens}: each
-second of signal becomes one token holding 11 statistics (mean, standard
-deviation, skewness, kurtosis, RMS, zero-crossing rate, median, minimum,
-maximum, spectral energy, spectral entropy) for each of the 18 channels, i.e.\
-198 dimensions; tokens are then grouped into windows of 30 or 60 seconds with a
-step of 10 or 15, which yields 827 and 363 windows respectively, between 1 and
-14 per subject at 60\,s. \textbf{(iii) Stride-cycle tokens}: one token per gait
-cycle carrying stride, stance and swing time, stance ratio, normalised peak
-force and impulse, stride-time increment and double-support time for both feet.
-Contacts are detected by thresholding each foot's total force at 5\,\% of its
-maximum, and strides outside 0.5--2.5\,s are discarded. The reported model uses
+between 35 and 254 per subject. \textbf{(ii) Amplitude-statistic features}: each
+second of signal becomes one feature vector holding the 11 statistics of
+Table~\ref{tab:stats} for each of the 18 channels, i.e.\ 198 dimensions; these
+vectors are then grouped into windows of 30 or 60 seconds with a step of 10 or 15,
+which yields 827 and 363 windows respectively, between 1 and 14 per subject at
+60\,s. \textbf{(iii) Stride-cycle features}: one feature vector per gait cycle carrying
+stride, stance and swing time, stance ratio, normalized peak force and impulse,
+stride-time increment and double-support time for both feet; contacts are
+detected by thresholding each foot's total force at 5\,\% of its maximum, and
+strides outside 0.5--2.5\,s are discarded. The reported model uses
 representation (ii) with 60\,s windows.
+
+\begin{table}[t]
+  \centering
+  \caption{The 11 statistics computed per second on each of the 18 channels
+  ($11 \times 18 = 198$ features).}
+  \label{tab:stats}
+  \small
+  \setlength{\tabcolsep}{4pt}
+  \begin{tabular}{lll}
+    \toprule
+    Level & Dispersion \& shape & Dynamics \& spectrum \\
+    \midrule
+    mean    & standard deviation & zero-crossing rate \\
+    median  & RMS                & spectral energy \\
+    minimum & skewness           & spectral entropy \\
+    maximum & kurtosis           & \\
+    \bottomrule
+  \end{tabular}
+\end{table}
 
 \subsubsection{Materials/Instruments used}
 Models were trained on a Kaggle NVIDIA Tesla T4 (16\,GB, compute capability
 7.5) with PyTorch 2.10 (CUDA 12.8) and \texttt{mamba-ssm} 2.3.2, using mixed
-precision. Development, feature extraction and evaluation ran locally on an
-Apple M-series machine. Code was version-controlled on GitHub and pulled by
-the Kaggle notebook at the start of every run, so each reported number comes
-from a known commit.
+precision. Development, feature extraction and evaluation ran locally on a
+machine with an Apple M1 chip with 8GB RAM. Code was version-controlled on
+GitHub and pulled by the Kaggle notebook at the start of every run, so each
+reported number comes from a known commit.
 
 \subsection{Proposed approach}
 \label{ssec:mod}
@@ -69,52 +114,51 @@ A Mamba block is a selective state-space layer: its state transition and input
 projections are functions of the input, so the recurrence can forget or retain
 information conditioned on content, and it runs in linear time in the sequence
 length \cite{gu2023mamba}. Standard Mamba is causal, which suits language
-modelling but discards the right-hand context when an entire window is
-available at inference. We therefore also implemented a bidirectional block --
-the normalised token sequence is processed by a forward mixer and, after
-reversal, by a second mixer with independent parameters, and the two outputs
-are summed before the residual connection -- and ablate it in
-Section~\ref{ssec:arch}. The reported model uses the bidirectional block,
-although the ablation finds no advantage over the causal one at matched size.
+modeling but discards the right-hand context when an entire window is available
+at inference. We therefore also implemented a bidirectional block (a forward
+mixer and, after reversal, a second mixer with independent parameters, summed
+before the residual connection) and ablate it in Section~\ref{ssec:arch}. The
+reported model uses it.
 
-The classifier projects tokens to $d_{\text{model}}$, applies $L$ such blocks,
+The classifier projects each feature vector to $d_{\text{model}}$, applies $L$ such blocks,
 and pools over time by concatenating the mean and the maximum of the final
 representation, which a linear layer maps to two logits. Three sizes were
-studied ($d_{\text{model}}, L$) $\in \{(64,2), (128,4), (256,6)\}$; the
+studied ($d_{\text{model}}, L$) $\in \{(64,2),$\allowbreak\ $(128,4),$\allowbreak\ $(256,6)\}$; the
 configuration selected in Section~\ref{ssec:selection} uses the middle one.
 
 \subsubsection{Training strategy}
 Per fold we grid-search dropout $\in \{0.1, 0.3\}$ and learning rate
 $\in \{3\!\cdot\!10^{-4}, 10^{-4}\}$, training with AdamW (weight decay
 $10^{-3}$), three warm-up epochs followed by cosine decay, batch size 128 and
-at most 30 epochs. The configuration with the highest validation ROC-AUC is
+at most 30 epochs, with early stopping on validation ROC-AUC (patience 6,
+minimum 8 epochs). The configuration with the highest validation ROC-AUC is
 retrained on the union of training and validation subjects for the epoch count
-that was optimal on validation, and that model predicts the test subjects --
-the deep-learning analogue of \texttt{GridSearchCV(refit=True)} on a
-predefined split. Early stopping uses validation ROC-AUC with patience 6 and a
-minimum of 8 epochs. Because some folds occasionally converged to a degenerate
-solution, a fold whose best validation AUC stays below 0.70 is retrained with
-a different seed (at most three attempts). The final model averages the window
-scores of three seeds.
+optimal on validation, and that model predicts the test subjects, the
+deep-learning equivalent of \texttt{GridSearchCV(refit=True)} on a predefined
+split. Because some folds occasionally converged to a degenerate solution, a
+fold whose best validation AUC stays below 0.70 is retrained with a different
+seed (at most three attempts). The final model averages three seeds.
 
 \subsubsection{Decision rule and subject-level aggregation}
-The network scores windows, but the clinical unit is the subject. A subject's
-score is the mean of its window scores. The decision threshold is calibrated
-per fold on that fold's \emph{validation} subjects by maximising balanced
-accuracy, using the model trained on training data only; test data never
-influences it. Results at the fixed threshold 0.5 are also reported and differ
-by at most two points.
+The network scores windows, but the clinical unit is the subject, so a
+subject's score is the mean of its window scores. The decision threshold is
+calibrated per fold on that fold's \emph{validation} subjects by maximizing
+balanced accuracy, using the model trained on training data only; test data
+never influences it. The fixed threshold 0.5 differs by at most two points.
 
 \subsubsection{Deployment on unseen cohorts}
-Each fold's weights are exported with the per-channel statistics of \emph{that
-fold's training subjects} and its threshold. A new recording is normalised with
-those stored statistics -- never with statistics recomputed from the new cohort,
-which would leak its distribution into its own predictions -- and the five
-models' scores are averaged.
+Each fold's weights are exported with its threshold and the per-channel
+statistics of \emph{that fold's training subjects}. A new recording is
+normalized with those stored statistics (never with statistics recomputed
+from the new cohort, which would leak its distribution into its own predictions)
+and the five folds' scores are averaged.
 
 \subsubsection{Evaluation metrics}
 We report accuracy, precision, recall and F1 (weighted by class support, so
 recall equals accuracy by construction), with sensitivity, specificity, ROC-AUC
 and confusion matrices. All values are the mean and standard deviation over
-1000 bootstrap resamples that draw whole subjects, so the several windows
-belonging to one subject are never counted as independent evidence.
+1000 bootstrap resamples that draw whole subjects, so windows of one subject
+are never counted as independent evidence. Each accuracy is tested against the
+chance level with a one-sided exact binomial test over the 100 subject
+decisions, and differences between models, which are evaluated on the same
+subjects, with DeLong's test for AUC and an exact McNemar test for accuracy.

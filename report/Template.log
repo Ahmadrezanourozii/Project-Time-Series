@@ -1,8 +1,8 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.8.19)  22 AUG 2026 18:47
+This is pdfTeX, Version 3.141592653-2.6-1.40.29 (TeX Live 2026) (preloaded format=pdflatex 2026.8.19)  2 OCT 2026 15:21
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
-**Template.tex
+**Template
 (./Template.tex
 LaTeX2e <2026-06-01>
 L3 programming layer <2026-08-10>
@@ -230,7 +230,7 @@ Package: multirow 2024/11/12 v2.9 Span multiple rows of a table
 \multirow@dima=\skip56
 \bigstrutjot=\dimen179
 )
-LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 13.
+LaTeX Font Info:    Trying to load font information for OT1+ptm on input line 32.
  (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/psnfss/ot1ptm.fd
 File: ot1ptm.fd 2001/06/04 font definitions for OT1/ptm.
 ) (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/l3backend/l3backend-pdftex.def
@@ -239,31 +239,31 @@ File: l3backend-pdftex.def 2026-07-20 L3 backend support: PDF output (pdfTeX)
 ) (./Template.aux)
 \openout1 = `Template.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
-LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 13.
-LaTeX Font Info:    ... okay on input line 13.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for PD1/pdf/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
+LaTeX Font Info:    Checking defaults for PU/pdf/m/n on input line 32.
+LaTeX Font Info:    ... okay on input line 32.
  (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/epstopdf-pkg/epstopdf-base.sty
 Package: epstopdf-base 2020-01-24 v2.11 Base part for package epstopdf
 Package epstopdf-base Info: Redefining graphics rule for `.eps' on input line 485.
  (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/latexconfig/epstopdf-sys.cfg
 File: epstopdf-sys.cfg 2010/07/13 v1.3 Configuration of (r)epstopdf for TeX Live
 ))
-Package hyperref Info: Link coloring OFF on input line 13.
+Package hyperref Info: Link coloring OFF on input line 32.
  (./Template.out) (./Template.out)
 \@outlinefile=\write3
 \openout3 = `Template.out'.
@@ -273,45 +273,47 @@ Underfull \hbox (badness 1028) in paragraph at lines 13--23
 []\OT1/ptm/m/n/9 Accuracies pub-lished on the Phy-s-ioNet gait database span
  []
 
-
-Underfull \vbox (badness 1014) has occurred while \output is active []
-
 ) (./Sections/02_Materials_and_Methods.tex
-<figures/fig1_pipeline.pdf, id=100, 394.95557pt x 80.79787pt>
+<figures/fig1_pipeline.pdf, id=100, 394.95557pt x 41.84433pt>
 File: figures/fig1_pipeline.pdf Graphic file (type pdf)
 <use figures/fig1_pipeline.pdf>
 Package pdftex.def Info: figures/fig1_pipeline.pdf  used on input line 9.
-(pdftex.def)             Requested size: 506.45905pt x 103.61198pt.
+(pdftex.def)             Requested size: 506.45905pt x 53.65952pt.
  [1{/Users/ahmadrezanourozi/Library/TinyTeX/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/enc/dvips/base/8r.enc}
 
 
 
 ]
-LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 58.
+LaTeX Font Info:    Trying to load font information for OT1+pcr on input line 103.
  (/Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/tex/latex/psnfss/ot1pcr.fd
 File: ot1pcr.fd 2001/06/04 font definitions for OT1/pcr.
 )
-Underfull \hbox (badness 1082) in paragraph at lines 57--63
+Underfull \hbox (badness 1082) in paragraph at lines 102--108
 \OT1/ptm/m/n/9 Models were trained on a Kag-gle NVIDIA Tesla T4 (16GB,
  []
 
 
-Underfull \hbox (badness 1102) in paragraph at lines 57--63
+Underfull \hbox (badness 1102) in paragraph at lines 102--108
 \OT1/ptm/m/n/9 com-pute ca-pa-bil-ity 7.5) with Py-Torch 2.10 (CUDA 12.8) and
  []
 
 ) (./Sections/03_Experiments_and_Results.tex [2 <./figures/fig1_pipeline.pdf>]
-<figures/fig3_results.pdf, id=152, 486.0361pt x 110.71379pt>
+<figures/fig5_embedding.pdf, id=159, 506.69896pt x 139.33173pt>
+File: figures/fig5_embedding.pdf Graphic file (type pdf)
+<use figures/fig5_embedding.pdf>
+Package pdftex.def Info: figures/fig5_embedding.pdf  used on input line 29.
+(pdftex.def)             Requested size: 506.45905pt x 139.2676pt.
+<figures/fig3_results.pdf, id=165, 245.38487pt x 125.80241pt>
 File: figures/fig3_results.pdf Graphic file (type pdf)
 <use figures/fig3_results.pdf>
-Package pdftex.def Info: figures/fig3_results.pdf  used on input line 123.
-(pdftex.def)             Requested size: 244.6937pt x 55.73854pt.
-<figures/fig4_confusion.pdf, id=153, 487.23813pt x 105.17683pt>
+Package pdftex.def Info: figures/fig3_results.pdf  used on input line 132.
+(pdftex.def)             Requested size: 244.6937pt x 125.45273pt.
+<figures/fig4_confusion.pdf, id=166, 487.23813pt x 109.59505pt>
 File: figures/fig4_confusion.pdf Graphic file (type pdf)
 <use figures/fig4_confusion.pdf>
-Package pdftex.def Info: figures/fig4_confusion.pdf  used on input line 134.
-(pdftex.def)             Requested size: 244.6937pt x 52.81937pt.
- [3]) (./Sections/04_Discussion.tex) (./Sections/05_Conclusions.tex) (./Template.bbl [4 <./figures/fig3_results.pdf> <./figures/fig4_confusion.pdf>]
+Package pdftex.def Info: figures/fig4_confusion.pdf  used on input line 141.
+(pdftex.def)             Requested size: 244.6937pt x 55.0382pt.
+) (./Sections/04_Discussion.tex [3]) (./Sections/05_Conclusions.tex) (./Template.bbl [4 <./figures/fig5_embedding.pdf> <./figures/fig3_results.pdf> <./figures/fig4_confusion.pdf>]
 Underfull \hbox (badness 3930) in paragraph at lines 34--37
 \OT1/ptm/m/n/9 mod-el-ing with se-lec-tive state spaces,''  \OT1/ptm/m/it/9 arXiv preprint
  []
@@ -327,18 +329,18 @@ Package rerunfilecheck Info: File `Template.out' has not changed.
 (rerunfilecheck)             Checksum: 3CE3A88FA4123780079202948C43FBE4;4133.
  ) 
 Here is how much of TeX's memory you used:
- 9275 strings out of 469089
- 147011 string characters out of 5458302
- 585552 words of memory out of 5000000
- 38181 multiletter control sequences out of 15000+600000
- 648613 words of font info for 79 fonts, out of 8000000 for 9000
+ 9300 strings out of 469089
+ 147490 string characters out of 5458302
+ 589294 words of memory out of 5000000
+ 38200 multiletter control sequences out of 15000+600000
+ 653677 words of font info for 86 fonts, out of 8000000 for 9000
  14 hyphenation exceptions out of 8191
- 74i,11n,79p,693b,591s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
-Output written on Template.pdf (5 pages, 283645 bytes).
+ 74i,11n,79p,467b,595s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi7.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmr9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy6.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy7.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy9.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/courier/ucrr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmb8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmbi8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmr8a.pfb></Users/ahmadrezanourozi/Library/TinyTeX/texmf-dist/fonts/type1/urw/times/utmri8a.pfb>
+Output written on Template.pdf (5 pages, 362604 bytes).
 PDF statistics:
- 260 PDF objects out of 1000 (max. 8388607)
- 209 compressed objects within 3 object streams
- 40 named destinations out of 1000 (max. 500000)
- 192 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 324 PDF objects out of 1000 (max. 8388607)
+ 248 compressed objects within 3 object streams
+ 43 named destinations out of 1000 (max. 500000)
+ 197 words of extra memory for PDF output out of 10000 (max. 10000000)
 

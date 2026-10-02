@@ -5,7 +5,8 @@ vs healthy control (HC) classification from gait vertical ground reaction force
 (VGRF) signals.
 **Owner**: Ahmadreza Nourozi (matriculation 23726011, M.Sc. AI).
 **Supervisor**: Tomás.
-**Last updated**: 2026-08-22. **The project is finished and submitted-ready.**
+**Last updated**: 2026-10-02. **The project is finished and submitted-ready.**
+The supervisor's review of the report has been worked through; see §14.
 
 This file is the single place to re-read before touching the project again.
 It records what was tried, what the numbers were, what broke, and what is still
@@ -20,11 +21,12 @@ open — so no experiment needs to be repeated.
 | Deliverable 1 (data analysis) | Done, submitted (`DataAnalysis.AhmadrezaNourozi.pptx`) |
 | Deliverable 2 (baselines) | Done, submitted (`Baseline Models.AhmadrezaNourozi.pptx`) |
 | Deliverable 3 (Mamba) | **Done.** ~20 GPU sessions, 48 configurations. Reported model: 60 s amplitude tokens, base encoder, 3 seeds → **75 % accuracy, 0.85 AUC** |
-| Short report | **Done and compliant** — `report/Template.pdf`, 4 content pages + 1 reference page |
+| Short report | **Done, compliant, and revised after supervisor review** — `report/Template.pdf`, 4 content pages + 1 reference page. Revision lives on branch `report-feedback`; see §14 |
 | Presentation | **Done** — `Mamba Results.AhmadrezaNourozi.pptx`, 15 slides for 15 min |
 | Inference on unseen data | **Done and tested on Kaggle** — `predict.py`, bundle dataset, standalone notebook |
 | Leakage audit | **Done** — `scripts/audit_leakage.py`, 34 checks, all pass |
 | Improvement attempt | **Done, negative** — see §11. The ceiling is reached; do not re-run |
+| Supervisor review of the report | **Done** — six requested changes implemented, see §14 |
 
 **Nothing is open.** The only remaining action is external: rotate the Kaggle
 API token (§6).
@@ -352,7 +354,9 @@ mamba_model.py  MambaClassifier (+ BiMambaLayer); mamba_minimal.py = CPU fallbac
 run_mamba.py    main entry point: both protocols, both evaluation levels, bundle export
 predict.py      inference on unseen recordings
 scripts/        export_fold_assignments, build_{feature,stride,fused,long}_sequences,
-                baseline_subject_metrics, fuse_predictions, make_report_figures, make_presentation
+                baseline_subject_metrics, fuse_predictions, make_report_figures,
+                make_embedding_figure, significance_tests, fill_report_tables,
+                make_presentation
 kaggle/         mamba-train.ipynb + kernel-metadata.json
 metadata/       fold_assignments.json, labels.csv  (committed; Kaggle needs no raw data)
 report/         LaTeX short report → Template.pdf
@@ -477,12 +481,29 @@ checks if the report is ever edited again.
 | Deck and report disagreed on AUC (0.86 vs 0.85) | Deck now reads the same files with the same rounding; a check confirms cell-by-cell agreement |
 | Window-level bootstrap resampled rows independently | Windows of one subject are near-duplicates; `bootstrap_metrics(..., groups=...)` now resamples whole subjects. Intervals were 2× too narrow |
 
+### Statistical tests behind Table 3 (2026-09-12)
+
+`scripts/significance_tests.py` writes `outputs/mamba/final/significance.json`
+and `scripts/fill_report_tables.py` prints its `p` column in the table.
+
+- **Against chance** (one-sided exact binomial on the 100 subject decisions):
+  every model/foot cell is above chance, `p` from 0.018 down to <1e-8 — the one
+  exception is **SVM-RBF right foot, 56 %, p = 0.14**. Stated in the caption.
+- **Between models**, paired on the same 100 subjects (both feet): DeLong on the
+  ROC curves gives Mamba +0.088 AUC over SVM-RBF (p = 0.026), +0.092 over
+  1D-ResNet (p = 0.006), +0.181 over LSTM (p < 0.001), **+0.039 over Random
+  Forest (p = 0.15, n.s.)**. Exact McNemar on accuracy: only +12 points over the
+  LSTM is significant (p = 0.036); Random Forest p = 0.81. This reproduces the
+  paired-bootstrap CIs that were already in the text (§11's conclusion holds).
+
 ### Compliance state of `report/Template.pdf`
 
 Verified with `pdffonts`, `pdfimages`, `pdfinfo`, not by assumption:
 
-- 4 content pages + 1 page holding only references
-- 16/16 fonts embedded **and** subsetted (the IEEE spec's main requirement)
+- 4 content pages + 1 page holding only references (re-verified 2026-10-02;
+  the check is `pdftotext -f 5 -l 5 Template.pdf - | awk '/REFERENCES/{exit} NF{n++} END{print n+0}'`
+  and it must print 0 — see the sed trap recorded in §14)
+- 24/24 fonts embedded **and** subsetted (the IEEE spec's main requirement)
 - zero raster images — all figures are vector, so the 300 dpi rule cannot be violated
 - not encrypted; abstract 145 words; five keywords
 - every figure and table referenced; no undefined references; no overfull boxes
@@ -492,8 +513,11 @@ Verified with `pdffonts`, `pdfimages`, `pdfinfo`, not by assumption:
 
 ```bash
 python scripts/audit_leakage.py                 # 34 leakage checks
+python scripts/significance_tests.py            # Table 3 p-values -> significance.json
 python scripts/fill_report_tables.py            # regenerate the results table from JSON
-python scripts/make_report_figures.py           # regenerate all figures (vector)
+python scripts/make_report_figures.py           # regenerate figs 1, 3, 4 (vector)
+python scripts/make_embedding_figure.py         # regenerate fig 2, the PCA/t-SNE panel
+cp outputs/mamba/final/figures_report/*.pdf report/figures/   # no automated copy step
 python scripts/make_presentation.py             # rebuild the deck from the same JSON
 cd report && pdflatex Template && bibtex Template && pdflatex Template && pdflatex Template
 pdffonts Template.pdf ; pdfimages -list Template.pdf ; pdfinfo Template.pdf
@@ -517,3 +541,120 @@ lists what is not stored in the repo (Kaggle token, `Data/`, `outputs/`).
 4. If the goal is a better number, the lever is **more subjects**, not more
    tuning — §11 explains why in measured terms.
 5. Rotate the Kaggle token before doing anything else if it has not been done.
+6. If the task touches the report, read §14 first: it records the supervisor's
+   review, why the figures are authored at print size, and the float/measurement
+   traps that will otherwise cost you an hour.
+
+---
+
+## 14. Supervisor review of the report (2026-10-01/02)
+
+Worked on branch **`report-feedback`** in this repo (`~/Desktop/Deliverable3`).
+Six requested changes plus a page-limit pass and a punctuation pass.
+
+**Beware: there is a stale copy of this project at `~/Desktop/Deliverable3 copy`.**
+Its `report/` has only ONE table (results = Table 1), no demographics table, no
+statistics table and no `p` column. It is a snapshot at commit `f4c6de9`. The
+live report is the one here. Do not edit the copy.
+
+### What changed
+
+| # | Change |
+|---|---|
+| 1 | Fig 1: "Tokenization" → "Feature extraction"; separator rule and the two protocol lines below the boxes removed; height 1.40 → 0.70 in |
+| 2 | Fig 2 (old) lost panel (a); only the split-unit panel survives, as the new Fig 3 |
+| 3 | All six captions cut to 1–2 lines |
+| 4 | Table 3 gained ± on F1/Sen/AUC; bold is now per column, not per row |
+| 5 | New Fig 2: PCA / t-SNE embedding of the 100 subjects |
+| 6 | Every "token" in the prose became "feature" / "feature vector" / "time step" |
+| 7 | Page limit: content pulled back onto page 4 |
+| 8 | Every parenthetical en-dash in the prose replaced by a comma or parentheses |
+
+### Things that cost time, so do not rediscover them
+
+- **The figures are authored at the size they print.** `\includegraphics` does
+  not rescale a figure that is already the right width, so the point sizes in
+  the script are the point sizes on the page. The old Fig 2 was authored 7.0 in
+  wide and squeezed into `\columnwidth` (244.7 pt), a 0.48× reduction — that,
+  not the font settings, is why its labels were unreadable. `fig3_results.pdf`
+  is now authored 3.68 in wide so its *tight bounding box* lands on 244.5 pt;
+  `fig5_embedding.pdf` is 7.30 in wide for the same reason at `\textwidth`.
+  There is **no automated copy** from `outputs/mamba/final/figures_report/` to
+  `report/figures/` — copy by hand after regenerating.
+- **Table 3 needed `\scriptsize` + `\tabcolsep 1.6pt`.** With ± on three more
+  columns it was 38.3 pt too wide; `\footnotesize` does not fit at any sane
+  column spacing. No `\resizebox`, no `table*`.
+- **The bootstrap σ for F1/Sen/AUC was already in the JSON.** No new statistic
+  was computed; `fill_report_tables.py` just reads `bootstrap[...]` instead of
+  `point[...]`. For those three columns the printed *mean* is still the point
+  estimate, because the bootstrap mean rounds differently in 6 of 45 cells
+  (always high by one unit in the last digit — resampling bias on a bounded
+  statistic). `python scripts/fill_report_tables.py --audit` lists them. The
+  notable one is **Mamba/Both AUC: 0.85 printed, 0.86 bootstrap mean** — the
+  same mismatch §12 already recorded.
+- **Float packing is on a knife edge.** Several levers (shrinking a figure,
+  deleting a sentence) move a float between pages and change the page budget
+  non-monotonically. Always re-measure after any edit; never assume a cut helps.
+- **A measurement trap that cost an hour.** `sed -n '1,/REFERENCES/p'` does
+  NOT match the pattern on line 1 — a sed range starting at line 1 looks for
+  its end pattern from line 2 onward. So the check reported the whole page
+  exactly when content *correctly* ended on page 4. Use the awk form in §12.
+
+### How page 4 was won back
+
+The Conclusion was spilling 16 lines onto page 5. In order of yield:
+
+1. **Captions at `\footnotesize` with a 3 pt skip** (spconf's `\@makecaption`
+   uses body size and 10 pt). Seven captions in four pages — this alone took
+   16 lines down to 6. Wording, numbering and the bold labels are untouched.
+2. `\textfloatsep` / `\dbltextfloatsep` 11 → 8 pt.
+3. Embedding figure 2.25 → 2.20 in.
+4. One sentence removed from the Discussion's first paragraph ("The plateau we
+   report is therefore a statement about the cohort…"), because the Conclusion
+   restates it. This is the **only** content removed beyond the eight cuts the
+   supervisor's list authorised; everything else tried was reverted.
+
+### The new figure (Fig 2)
+
+`scripts/make_embedding_figure.py`. Reuses `per_second_tokens` from
+`build_feature_sequences.py` and the loaders from `baseline/features.py` — no
+new feature code. 100 recordings, first 5 s dropped, 198-dim per-second vectors
+averaged per subject, z-scored over all 100. PCA + t-SNE (perplexity 30,
+`random_state=42`). **50 PD / 50 HC; PC1 18.0 %, PC2 16.2 % explained variance.**
+Takes ~2 min; the (100, 198) matrix is cached at
+`outputs/mamba/final/figures_report/subject_mean_features.npz`, so re-runs are
+instant. Pass `--rebuild` to recompute.
+
+Note: the reference image the supervisor supplied was built from **5 s windows
+with a 2.5 s step** (its own title says so), i.e.
+`outputs/baseline_v1_step2.5s/cache/window_features_v1.csv` from a superseded
+pipeline version. The report deliberately uses the per-second features instead,
+because those are what the reported model is fed, so the point layout differs
+from that image by design.
+
+### Punctuation
+
+Sixteen parenthetical en-dashes (`--`) were removed from the prose: a comma
+where it read cleanly, parentheses where the clause already contained commas.
+What legitimately remains, and should **not** be "fixed": numeric ranges
+(`70--99\,\%`, `0.5--2.5\,s`), the four `---` in Table 1 meaning "not
+applicable", `Index Terms---` which `spconf.sty` generates, and the page ranges
+`IEEEbib.bst` generates in the bibliography.
+
+### Final verification (2026-10-02)
+
+5 pages = 4 content + 1 references · 0 content lines on page 5 · 0 overfull
+boxes · 0 undefined references/citations · 0 raster images · 24/24 fonts
+embedded and subsetted · every figure and table referenced · all five pages
+rendered to PNG and read through.
+
+Numbering after the revision: Fig 1 pipeline, **Fig 2 PCA/t-SNE**, Fig 3
+split-unit, Fig 4 confusion; Table 1 cohort, Table 2 statistics, Table 3 results.
+
+### Still open
+
+- The branch `report-feedback` is **not merged** into `main`.
+- The presentation (`Mamba Results.AhmadrezaNourozi.pptx`) was **not** touched.
+  It still says "token" throughout and still shows the two-panel accuracy
+  figure. If the supervisor wants the deck to match the report, rerun
+  `scripts/make_presentation.py` after porting these changes to it.

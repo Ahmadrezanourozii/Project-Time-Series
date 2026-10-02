@@ -1,5 +1,10 @@
 # How to restart work on this project
 
+> **Work in `~/Desktop/Deliverable3`.** There is a stale snapshot at
+> `~/Desktop/Deliverable3 copy` whose report has only one table and no `p`
+> column. Editing it is a wasted session. The current report revision is on
+> branch **`report-feedback`** (not merged); see CLAUDE.md §14.
+
 Paste the block below as your **first message** in a new session. Everything
 else lives in `CLAUDE.md`; this file only exists so you do not have to remember
 what to say.
@@ -15,8 +20,11 @@ folder end to end — it is the knowledge base with every experiment, result,
 failure and decision from the previous sessions. Also read RESUME.md.
 
 Key facts so you do not re-derive them:
-- Final model: Mamba on 60 s amplitude-statistic tokens, base encoder, 3 seeds.
-  75% subject-level accuracy, 0.85 AUC, no data leakage.
+- Final model: Mamba on 60 s amplitude-statistic features, base encoder, 3 seeds.
+  75% subject-level accuracy, 0.85 AUC, no data leakage. (The report calls these
+  "features", not "tokens" - the supervisor asked for that; CLAUDE.md §14.)
+- The report has been revised after supervisor review. That work is on branch
+  `report-feedback` and is NOT merged into main.
 - The ceiling is reached. CLAUDE.md section 11 proves it with measurements.
   Do not restart the architecture/hyper-parameter search.
 - Deliverables: report/Template.pdf and Mamba Results.AhmadrezaNourozi.pptx.
@@ -65,11 +73,17 @@ bundle dataset attached, upload the new `.txt` recordings as a dataset, set
 `NEW_DATA` in cell 2, Run All. No retraining. Expect roughly 75 % on genuinely
 unseen subjects; sensitivity runs higher than specificity.
 
-**The supervisor asked for a change to the report or slides.** Edit the LaTeX in
+**The supervisor asked for a change to the report or slides.** Read CLAUDE.md
+§14 first - it records the last review and the traps. Edit the LaTeX in
 `report/Sections/`, then rebuild. If any *number* changes, regenerate rather
 than retype: `python scripts/fill_report_tables.py`, then
-`python scripts/make_report_figures.py`, then `python scripts/make_presentation.py`.
-Re-check compliance with the commands in CLAUDE.md §12.
+`python scripts/make_report_figures.py` and
+`python scripts/make_embedding_figure.py`, then **copy the PDFs by hand** from
+`outputs/mamba/final/figures_report/` into `report/figures/` (there is no
+automated copy step), then `python scripts/make_presentation.py`.
+Re-check compliance with the commands in CLAUDE.md §12. The report sits at
+exactly four content pages: after ANY edit, re-run the page-5 check in §12
+before you call it done.
 
 **You want a better accuracy.** Read CLAUDE.md §11 first. A single scalar
 feature already matches the deep model, the prescribed folds carry a study

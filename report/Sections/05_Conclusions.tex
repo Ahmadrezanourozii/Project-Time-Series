@@ -3,23 +3,15 @@
 We classified Parkinson's disease from vertical ground reaction force
 recordings with a Mamba state-space model on five subject-disjoint folds. On
 both feet it reaches $75 \pm 4$\,\% accuracy, $0.75$ weighted F1 and $0.85$ AUC
-at subject level, marginally ahead of the Random Forest, SVM-RBF, 1D-ResNet and
-LSTM baselines run through the same evaluation code, though the Random Forest
-remains better on the right foot alone. The result came from the input
-representation rather than the architecture: the bidirectional extension of the
-causal scan made no measurable difference at matched size.
+at subject level: ahead of the SVM-RBF, 1D-ResNet and LSTM baselines run
+through the same evaluation code, and level with a tuned Random Forest. The
+gain came from the input representation, not the architecture.
 
-The methodological finding may be the more useful one. Re-running the same
-baselines with a window-wise split raises Random Forest accuracy from 73\,\% to
-98\,\%, without touching the features, the models or the metrics. When one
-recording yields more than a hundred correlated windows the split unit is not a
-detail, and an accuracy quoted for this database cannot be interpreted until it
-is stated. For the same reason we selected the final configuration on
-validation AUC rather than test accuracy, which costs about three points but
-makes the number an estimate of performance on new subjects rather than a
-summary of our search.
-
-More data would help more than more tuning. Every model we tried, classical or
-deep, plateaued in the same narrow band, which points at the cohort rather than
-the method: with 100 subjects one person is worth one accuracy point. Pooling
-the dual-task recordings and other public VGRF cohorts is the obvious next step.
+The methodological finding may be the more useful one. A window-wise split
+raises Random Forest accuracy from 73\,\% to 98\,\% with no other change to
+features, models or metrics: when one recording yields more than a hundred
+correlated windows, an accuracy quoted for this database cannot be interpreted
+until the split unit is stated. We chose the final configuration on validation
+AUC for the same reason. Every model plateaued in the same band, pointing at
+the cohort rather than the method: pooling the dual-task recordings and other
+public VGRF cohorts is the obvious next step.

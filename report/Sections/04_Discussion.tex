@@ -1,56 +1,45 @@
 \section{Discussion}
+\label{sec:disc}
 
-Under the subject-disjoint protocol the Mamba classifier edges out the
-baselines on both feet -- two accuracy points and $0.03$ AUC over a tuned
-Random Forest -- but it loses on the right foot, and with a $\pm 4$ bootstrap
-spread none of these gaps is individually convincing. We would not present
-this as a demonstration that state-space models are the right tool for gait
-signals. The two effects that did move the numbers unambiguously were not
-architectural at all: how the signal is presented to the network, and how the
-data is split.
+Mamba and the Random Forest are statistically tied
+(Section~\ref{ssec:baselines}), the expected outcome on a cohort of this size.
+Deep sequence models are data-hungry by construction: a Mamba encoder
+must learn a representation of gait, and the mapping from it to a diagnosis,
+from 60 training subjects per fold, whereas a Random Forest starts from
+statistics that already encode what a gait cycle is and has only to weight
+them. With 100 subjects a well-tuned classical baseline is not a weak opponent
+but the natural favorite, and a state-space model that matches it is doing so
+far outside its usual regime.
 
-The failure with raw input made the first point concrete. On folds~1 and~4
-training settled at a validation AUC of about $0.53$ while the same code on
-folds~2, 3 and~5 passed $0.92$. We first assumed a bug, then an optimisation
-problem, and tried longer windows, fresh seeds, warm-up, cosine decay and a
-larger encoder; none helped. What helped was replacing the 500 raw samples of a
-window by eleven statistics per channel per second. With 60 training subjects a
-network reading raw traces must discover both what a gait cycle looks like and
-which of its properties separate patients from controls; the statistics supply
-the first half, leaving the sequence model to learn how the descriptors evolve.
+The two families also differ in what they let a clinician inspect: a Random
+Forest exposes feature importances, so a decision traces back to a named
+quantity such as the variability of right-foot stance ratio, whereas the Mamba
+encoder offers no comparable account of its internal state. Where the two are
+statistically tied, that transparency is a real argument for the classical
+model.
 
-The bidirectional block was our other architectural idea and it did not survive
-its own ablation. A causal scan gives the first tokens of a window almost no
-context, which ought to hurt when the whole window is available at inference.
-Run at matched size and input, the two variants landed within a thousandth of
-each other on both accuracy and AUC. Mean-pooling is the likely explanation: it
-already aggregates across the window, so the late tokens of a causal scan can
-carry the evidence the classifier needs.
 
-The protocol comparison in Section~\ref{ssec:protocols} has a mechanical
-explanation. Windows cut one second apart from the same recording are close to
-duplicates, and they share sensor placement, body mass and an individual gait
-signature. Split them at random and most test windows have a near neighbour in
-the training set, so a classifier can identify the person and recall the label.
-The Random Forest makes the size of that shortcut obvious: 73\,\% when subjects
-are held out, 98\,\% when only windows are. The SVM-RBF figure under the same
-split, 88\,\%, is close to accuracies frequently quoted for this database.
+The raw-input collapse of Section~\ref{ssec:input} makes the same point. With 60 training subjects a network
+reading raw traces must discover both what a gait cycle looks like and which of
+its properties separate patients from controls; the statistics supply the first
+half, leaving the sequence model to learn how the descriptors evolve. The
+unstratified sub-studies compound this, since capacity spent on study identity
+does not transfer to held-out subjects.
 
-This is also our reading of the gap to the literature. Our results sit in the
-70--80\,\% band rather than above 90\,\%, and we do not think that reflects a
-weaker method: Figure~\ref{fig:results}(b) reproduces the high numbers from
-identical features and identical code.
+A causal scan gives the first time steps of a window almost no context, yet it
+matched the bidirectional block (Section~\ref{ssec:arch}).
+Mean-pooling is the likely explanation: it already aggregates
+across the window, so the late time steps of a causal scan carry the evidence the
+classifier needs.
 
-Two caveats belong here. We searched forty-five configurations, and comparing
-them on pooled test accuracy would make the reported number optimistic, which
-is why Section~\ref{ssec:selection} selects on validation AUC at a cost of
-about three points. And 100 subjects is few: one subject is one accuracy point,
-and the $\pm 4$ spread leaves most per-configuration differences insignificant.
+The protocol effect of Section~\ref{ssec:protocols} has a mechanical
+explanation: windows cut one second apart are near-duplicates that share sensor
+placement, body mass and an individual gait signature, so under a random split
+most test windows have a near neighbor in training and a classifier can
+identify the person and recall the label.
 
-Three limitations remain. Only the normal-walk recordings were used, leaving
-the dual-task ones unexploited. Stride detection relies on a fixed force
-threshold, adequate here but in need of revisiting for severely impaired gait.
-And the stride-cycle tokens, which encode exactly the timing variability the
-clinical literature emphasises, were the weakest input on their own (66\,\%)
-although the same features complement the amplitude statistics in a
-subject-level Random Forest -- a shortcoming of our fusion, not of the features.
+Several limitations remain. One subject is
+worth one accuracy point, so the $\pm 4$ spread leaves most per-configuration
+differences insignificant. Only the normal-walk recordings were used, and
+stride detection relies on a fixed force threshold, adequate here but in need
+of revisiting for severely impaired gait.

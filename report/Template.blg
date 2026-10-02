@@ -2,7 +2,8 @@ This is BibTeX, Version 0.99e (TeX Live 2026)
 Capacity: max_strings=200000, hash_size=200000, hash_prime=170003
 The top-level auxiliary file: Template.aux
 The style file: IEEEbib.bst
-Database file #1: refs.bib
+Database file #1: strings.bib
+Database file #2: refs.bib
 You've used 8 entries,
             1838 wiz_defined-function locations,
             508 strings with 5261 characters,

@@ -3,6 +3,25 @@
 \documentclass{article}
 \usepackage{spconf,amsmath,graphicx,hyperref,booktabs,multirow}
 
+% Float separation tightened from the article defaults (20pt) so that the four
+% pages of content stay four pages; captions and rules are untouched.
+\setlength{\textfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\dbltextfloatsep}{8pt plus 2pt minus 3pt}
+\setlength{\intextsep}{10pt plus 2pt minus 3pt}
+
+% Captions one step below the body size and set closer to the float they
+% belong to (spconf's own \@makecaption uses the body size and a 10pt skip).
+% Wording, numbering and the bold "Fig. N" / "Table N" labels are untouched.
+\makeatletter
+\long\def\@makecaption#1#2{%
+  \vskip 3pt
+  \footnotesize
+  \setbox\@tempboxa\hbox{#1. #2}%
+  \ifdim \wd\@tempboxa >\hsize #1. #2\par \else
+    \hbox to\hsize{\hfil\box\@tempboxa\hfil}%
+  \fi}
+\makeatother
+
 \title{Parkinson's Disease Detection from Gait Force Signals\\ with a State-Space (Mamba) Model:\\ Results and the Role of the Evaluation Protocol}
 
 \name{Ahmadreza Nourozi\thanks{Ahmadreza Nourozi, ahmadreza.nourozi@fau.de,
@@ -21,13 +40,13 @@ differences between the models involved. We classify patients against controls
 with a Mamba state-space model on 100 subjects, under two evaluation protocols
 on identical data. Held to subject-disjoint splits, with the configuration
 chosen on validation rather than on test, the model reaches $75 \pm 4$\,\%
-accuracy and $0.85$ AUC on both feet, slightly ahead of Random Forest,
-SVM-RBF, 1D-ResNet and LSTM baselines. The gain comes from describing each
-second by its channel statistics instead of feeding raw samples, which also
-removes a training collapse seen on two folds. Re-running the same baselines
-with window-wise splits, where windows of one subject fall on both sides,
-lifts Random Forest accuracy from 73\,\% to 98\,\%. We report the
-subject-wise numbers, and the window-wise ones only as a caution.
+accuracy and $0.85$ AUC on both feet, level with a tuned Random Forest and
+ahead of SVM-RBF, 1D-ResNet and LSTM baselines. The gain comes from describing
+each second by its channel statistics instead of feeding raw samples, which
+also removes a training collapse seen on two folds. Re-running the same
+baselines with window-wise splits, where windows of one subject fall on both
+sides, lifts Random Forest accuracy from 73\,\% to 98\,\%, a number we
+report only as a caution.
 \end{abstract}
 
 \begin{keywords}
@@ -41,6 +60,6 @@ Parkinson's disease, gait analysis, state-space models, Mamba, data leakage
 \input{./Sections/05_Conclusions}
 
 \bibliographystyle{IEEEbib}
-\bibliography{refs}
+\bibliography{strings,refs}
 
 \end{document}
