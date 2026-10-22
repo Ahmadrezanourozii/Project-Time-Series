@@ -20,3 +20,6 @@ tabe.png
 # Credentials — never commit
 kaggle.json
 .kaggle/
+
+# Submitted deliverables
+!final_report/*.pdf

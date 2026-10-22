@@ -2,25 +2,35 @@
 
 Deliverable 3: classification with a Mamba state-space model, trained on Kaggle GPU.
 
+## Final report and presentation
+
+- [Final report (PDF)](final_report/Final_Report_Ahmadreza_Nourozi.pdf) — *Parkinson's disease detection from gait force signals with a state-space (Mamba) model: results and the role of the evaluation protocol* (4 pages + references, IEEE format)
+- [Final presentation (PDF)](final_report/Final_Presentation_Ahmadreza_Nourozi.pdf) — 15-minute talk, 17 slides
+
 ## Headline result
 
 Subject-level, both feet, five predefined subject-wise folds pooled
-(100 subjects, mean ± std over 1000 bootstrap resamples):
+(100 subjects, mean ± SD over 1000 bootstrap resamples of subjects).
+The Mamba configuration was selected on mean validation ROC-AUC, never on test data.
 
-| Model | Acc (%) | Pre (%) | Rec (%) | F1 | Sen (%) | Spe (%) | AUC |
-|---|---|---|---|---|---|---|---|
-| SVM-RBF | 68 ± 5 | 69 ± 5 | 68 ± 5 | 0.68 | 66 | 70 | 0.77 |
-| 1D-ResNet | 66 ± 5 | 67 ± 5 | 66 ± 5 | 0.66 | 56 | 76 | 0.76 |
-| LSTM | 63 ± 5 | 64 ± 5 | 63 ± 5 | 0.63 | 54 | 72 | 0.68 |
-| Random Forest | 73 ± 4 | 74 ± 4 | 73 ± 4 | 0.73 | 74 | 72 | 0.82 |
-| **Mamba (ours)** | **78 ± 4** | **79 ± 4** | **78 ± 4** | **0.78** | 82 | 74 | 0.82 |
+| Model | Acc (%) | Pre (%) | F1 | Sen (%) | AUC |
+|---|---|---|---|---|---|
+| SVM-RBF | 68 ± 5 | 69 ± 5 | 0.68 | 66 | 0.77 |
+| 1D-ResNet | 66 ± 5 | 67 ± 5 | 0.66 | 56 | 0.76 |
+| LSTM | 63 ± 5 | 64 ± 5 | 0.63 | 54 | 0.67 |
+| Random Forest | 73 ± 4 | 74 ± 4 | 0.73 | 74 | 0.81 |
+| **Mamba (ours)** | **75 ± 4** | **77 ± 4** | **0.75** | **86** | **0.85** |
 
-Per foot, Mamba reaches 70 % (left), 79 % (right), 78 % (both).
+Per foot, Mamba reaches 74 % (left), 71 % (right) and 75 % (both).
+DeLong's test puts Mamba clearly ahead of SVM-RBF, 1D-ResNet and LSTM on AUC,
+and statistically level with the tuned Random Forest (p = 0.15). The main gain
+comes from feeding per-second channel statistics instead of raw samples, which
+also removed a training collapse seen on two folds with raw input.
 
 Under a **window-wise** split — windows of one subject in both train and test,
-the protocol implicit in much of the literature — the same pipeline reports
-88 % (SVM), 98 % (RF). Those numbers measure subject recognition, not disease
-detection, and are reported in the paper only as a contrast.
+the protocol implicit in much of the literature — the same baselines report
+88 % (SVM-RBF) and 98 % (Random Forest). Those numbers measure subject
+recognition, not disease detection, and are reported only as a contrast.
 
 ## Repository layout
 
@@ -32,7 +42,8 @@ run_mamba.py     entry point — both protocols, both evaluation levels
 scripts/         cache builders, baseline recomputation, figures, deck
 kaggle/          notebook + kernel metadata for the GPU runs
 metadata/        committed fold assignments + labels (no raw data needed on Kaggle)
-report/          LaTeX short report (Template.pdf = 4 pages + references)
+report/          LaTeX source of the short report
+final_report/    submitted final report and presentation (PDF)
 ```
 
 Data (489 MB) and results (`outputs/`) are deliberately not tracked by git.
@@ -79,7 +90,9 @@ it is correct but slow and intended for smoke tests only. Pass
 
 ## Deliverables
 
-- `report/Template.pdf` — short report (4 content pages + references).
-  The author footnote still needs your home address and date of birth.
-- `Mamba Results.AhmadrezaNourozi.pptx` — 14-slide deck for the 15-minute talk.
-- `outputs/mamba/final/` — predictions, metrics, tables and figures behind both.
+1. Data analysis (May 2026)
+2. Baseline models — TSFresh features with Random Forest and SVM (linear / RBF), 5-fold CV (July 2026)
+3. Mamba classifier, final report and presentation (September 2026) — see [`final_report/`](final_report/)
+
+Predictions, metrics, tables and figures behind the report are written to
+`outputs/mamba/final/` by `run_mamba.py` (not tracked by git).
