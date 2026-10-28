@@ -592,7 +592,7 @@ Within-study accuracy: Ga 0.89, Ju 0.93, Si 0.84.
 | + Mamba incumbent score (weight 0.25 / 0.5) | 0.84 / 0.82 vs 0.89 — hurts |
 | Length augmentation | see above, net zero |
 | L1 / CV-tuned logistic regression, SVM | 0.80–0.83, below the fixed ensemble |
-| Mamba on rich stride tokens (`scripts/build_stride_rich.py`, kernel `ah22reza/pd-stride-mamba`) | still running when the submission was fixed; rule set in advance: fuse only if course-fold accuracy ≥ 0.88 *and* the fusion improves OOF |
+| Mamba on rich stride tokens (`scripts/build_stride_rich.py`, kernel `ah22reza/pd-stride-mamba`) | 65 channels/stride, 20/40-stride windows, base/small, 3 seeds (1.6 GPU-h incl. a mamba-ssm source build). Best by val AUC (s40_base, 0.872): course folds 0.79 / 0.86 — same level as amplitude-token Mamba. Fusion with the ensemble 0.86 (w=0.25) / 0.83 (w=0.5) vs 0.89. Pre-set rule (≥ 0.88 and fusion helps) failed → not used. Sequence models do not recover what explicit per-subject variability/asymmetry statistics give with 100 subjects |
 | Extra PhysioNet recordings | **deliberately not used**: the held-out subjects are very likely the database's other subjects, so downloading it would expose their labels |
 
 ### Held-out predictions
