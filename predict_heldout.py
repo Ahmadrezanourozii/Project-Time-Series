@@ -13,7 +13,7 @@ Deployment choices:
   * each recording is processed on its own; nothing is estimated from the
     held-out cohort, so a single new patient gets the same answer as in a batch
   * threshold 0.5 on the averaged probability: the training set is balanced and
-    cross-validated sensitivity/specificity at 0.5 are 0.86/0.91
+    cross-validated sensitivity/specificity at 0.5 are 0.85/0.89
 
 Usage:
   python predict_heldout.py --input path/to/HeldOut_Eval_Anonymized \

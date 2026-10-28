@@ -5,7 +5,7 @@ vs healthy control (HC) classification from gait vertical ground reaction force
 (VGRF) signals.
 **Owner**: Ahmadreza Nourozi (matriculation 23726011, M.Sc. AI).
 **Supervisor**: Tomás.
-**Last updated**: 2026-08-22. **The project is finished and submitted-ready.**
+**Last updated**: 2026-10-28. **The held-out evaluation is answered — read §14 first.**
 
 This file is the single place to re-read before touching the project again.
 It records what was tried, what the numbers were, what broke, and what is still
@@ -24,10 +24,11 @@ open — so no experiment needs to be repeated.
 | Presentation | **Done** — `Mamba Results.AhmadrezaNourozi.pptx`, 15 slides for 15 min |
 | Inference on unseen data | **Done and tested on Kaggle** — `predict.py`, bundle dataset, standalone notebook |
 | Leakage audit | **Done** — `scripts/audit_leakage.py`, 34 checks, all pass |
-| Improvement attempt | **Done, negative** — see §11. The ceiling is reached; do not re-run |
+| Improvement attempt | **Done, negative** — see §11. The ceiling is reached *for Mamba on amplitude tokens*; do not re-run |
+| Held-out evaluation (44 anonymised recordings) | **Done** — gait-cycle feature ensemble, `predict_heldout.py`, see §14. CV 0.89 acc / 0.95 AUC |
 
-**Nothing is open.** The only remaining action is external: rotate the Kaggle
-API token (§6).
+**Nothing is open** except submitting `outputs/heldout/predictions.xlsx` through
+the course form and rotating the Kaggle API tokens (two accounts were used, §14).
 
 **Supervisor feedback (2026-08-19)**: *"80% sounds good. I will later ask everyone
 to try inference in a new set."* → the subject-wise result is accepted, and the
@@ -351,6 +352,8 @@ dl/             shared DL pipeline: config, windows, datasets, models, train, ag
 mamba_model.py  MambaClassifier (+ BiMambaLayer); mamba_minimal.py = CPU fallback
 run_mamba.py    main entry point: both protocols, both evaluation levels, bundle export
 predict.py      inference on unseen recordings
+predict_heldout.py  held-out evaluation: gait ensemble on all 100 subjects -> filled xlsx (§14)
+gait/           gait-cycle features (features.py), GaitEnsemble (models.py), subject-wise CV (evaluate.py)
 scripts/        export_fold_assignments, build_{feature,stride,fused,long}_sequences,
                 baseline_subject_metrics, fuse_predictions, make_report_figures, make_presentation
 kaggle/         mamba-train.ipynb + kernel-metadata.json
@@ -511,9 +514,106 @@ lists what is not stored in the repo (Kaggle token, `Data/`, `outputs/`).
 2. The deliverables are `report/Template.pdf` and
    `Mamba Results.AhmadrezaNourozi.pptx`. Both are generated from
    `outputs/mamba/final/` — never edit numbers by hand; run the scripts in §12.
-3. If a new test set arrives, use the standalone Kaggle notebook
-   `ah22reza/pd-mamba-predict` with the bundle dataset `ah22reza/pd-mamba-bundle`
-   attached. Expect roughly 75 % on genuinely unseen subjects.
-4. If the goal is a better number, the lever is **more subjects**, not more
-   tuning — §11 explains why in measured terms.
-5. Rotate the Kaggle token before doing anything else if it has not been done.
+3. If a new test set arrives, run `predict_heldout.py` (§14) — CPU only, a few
+   minutes, no Kaggle needed. The Mamba bundle path (`ah22reza/pd-mamba-predict`)
+   still works but is the weaker model (~75 % vs ~89 %).
+4. §11's "ceiling" was the ceiling of the *amplitude-statistic representation*,
+   not of the dataset: gait-cycle features moved it from 0.75 to 0.89 (§14).
+5. Rotate the Kaggle tokens before doing anything else if it has not been done.
+
+---
+
+## 14. Held-out evaluation (2026-10-28)
+
+**Request** (Tomás): predict PD (1) / control (0) for 44 anonymised recordings
+(`HeldOut_Eval_Anonymized.zip`, `Eval_001..044.txt`, same 19-column format),
+fill `prediction_template.xlsx` (44 rows, 0/1, AnonID and row order untouched),
+submit via the course Google Form. Model choice is ours ("you are the expert").
+The README forbids trying to discover identities or labels.
+
+**Answer**: `outputs/heldout/predictions.xlsx` from `predict_heldout.py`.
+Not committed — the repo is public and the file is a graded answer.
+
+### What changed the result: gait-cycle features, not a new network
+
+`gait/features.py` segments each foot's total force into stances (threshold
+max(2 % body weight, 5 % of the foot's 99th percentile)) and strides
+(0.6–2.5 s), then computes per recording (125 model features):
+
+| Family | Examples | Alone (acc / AUC) | Ensemble without it |
+|---|---|---|---|
+| timing | stride/stance/swing time, stance %, double support, robust CV, lag-1 | 0.79 / 0.87 | 0.81 / 0.90 |
+| centre of pressure | COP at heel strike, AP excursion & speed, ML range, heel/forefoot share, per-sensor share | 0.77 / 0.83 | 0.84 / 0.94 |
+| bilateral | L/R asymmetry, gait asymmetry (Plotnik 2005), phase coordination index (Plotnik 2007) | 0.79 / 0.86 | 0.86 / 0.92 |
+| force shape | heel-strike/push-off peaks, valley, loading rates, impulse | 0.57 / 0.63 | 0.87 / 0.95 |
+
+(5×5-fold repeated CV; all four together: 0.87–0.89 / 0.95.) Forces are divided
+by a per-recording body-weight proxy (mean of L+R total force); COP uses the
+sensor coordinates in `format.txt`. The single strongest variable is where the
+COP sits at initial contact (PD: flatter, more anterior foot strike; AUC 0.83,
+0.74–0.96 within each sub-study), followed by swing-time variability and
+gait asymmetry — the classic PD markers. All top features hold *within* each
+of Ga/Ju/Si, so this is not the study confound of §11.
+
+### Model and evidence
+
+`gait/models.py::GaitEnsemble` = mean probability of L2 logistic regression
+(C=0.1), random forest, extra trees (500 trees, leaf ≥ 2) and histogram
+gradient boosting (depth 3). Fixed defaults, nothing tuned on a test split.
+
+| Protocol | Accuracy | AUC |
+|---|---|---|
+| Course folds (train+val → test, pooled 100) | **0.89** | **0.95** |
+| Repeated stratified 5-fold, 10–20 shuffles | 0.87–0.89 (sd 0.025) | 0.95 |
+| Mamba incumbent, same course folds, threshold 0.5 | 0.77 | 0.85 |
+
+Paired bootstrap on the course folds, ensemble − Mamba accuracy: **+0.12
+[0.03, 0.21]** — the first difference in this project whose CI excludes zero.
+Sensitivity/specificity at 0.5: 0.85 / 0.89; accuracy is flat for thresholds
+0.45–0.55 and the OOF probabilities are calibrated (0.4–0.6 bin → 54 % PD).
+Within-study accuracy: Ga 0.89, Ju 0.93, Si 0.84.
+
+### Deployment decisions
+
+- **Fit on all 100 subjects** (10 seeds per tree member). CV selected the recipe;
+  the shipped model should use every labelled subject, not the 60/80 of a fold.
+- **Per-recording processing only.** No statistic is estimated from the held-out
+  cohort, so one patient gets the same answer alone as in a batch.
+- **Threshold 0.5** (balanced training set; see above).
+- **Short recordings**: test features recomputed from only the first 60 s / 35 s
+  keep 0.87 / 0.85 accuracy. Training on extra 35–90 s segments helped short
+  tests (+1–2 points) but cost 1.7 points on full ones → not adopted.
+
+### Tried and rejected (do not repeat)
+
+| Idea | Result |
+|---|---|
+| + DFA α, sample entropy, waveform consistency, heel-off timing, harmonic ratio | 0.871 vs 0.872 base — nothing |
+| + Mamba incumbent score (weight 0.25 / 0.5) | 0.84 / 0.82 vs 0.89 — hurts |
+| Length augmentation | see above, net zero |
+| L1 / CV-tuned logistic regression, SVM | 0.80–0.83, below the fixed ensemble |
+| Mamba on rich stride tokens (`scripts/build_stride_rich.py`, kernel `ah22reza/pd-stride-mamba`) | still running when the submission was fixed; rule set in advance: fuse only if course-fold accuracy ≥ 0.88 *and* the fusion improves OOF |
+| Extra PhysioNet recordings | **deliberately not used**: the held-out subjects are very likely the database's other subjects, so downloading it would expose their labels |
+
+### Held-out predictions
+
+21 PD / 23 control. Bootstrap refits over the training subjects (40×) leave
+35 of 44 decisions unchanged in ≥ 80 % of refits; 9 are borderline (scores
+0.38–0.63). Expected accuracy on genuinely new subjects ≈ 0.85–0.89 (lower
+end if the held-out set is harder or shorter than training).
+
+### How to reproduce
+
+```bash
+python predict_heldout.py --input <HeldOut_Eval_Anonymized> \
+    --template <HeldOut_Eval_Anonymized>/prediction_template.xlsx --cv
+```
+Needs `Data/splits` (or `--train-dir` with the 100 `<subject>_01.txt` files).
+Writes `outputs/heldout/{predictions.xlsx,predictions.csv,heldout_scores.csv,
+heldout_report.json}` and validates the xlsx (44 rows, 0/1, order unchanged).
+
+Raw data for a fresh machine: Kaggle dataset `ah22reza/data-time-series`
+(the whole-dataset download returned "not found" right after upload; per-file
+`-f Data/splits/Fold_1/<split>/<id>_01.txt` downloads work — Fold_1 alone
+covers all 100 subjects). Kaggle accounts used: `ah22reza` and `reza12123`;
+both tokens were pasted into chat and must be rotated.
